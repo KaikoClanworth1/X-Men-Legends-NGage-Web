@@ -7,6 +7,9 @@ import { Breakables } from './breakables.js';
 import { Pickups, Inventory } from './pickups.js';
 import { Dialogue } from './dialogue.js';
 import { Voice } from '../audio/audio.js';
+import { ScriptRuntime } from './script.js';
+import { missionScriptFor } from './missions/index.js';
+import './missions/e01m01.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -22,7 +25,8 @@ export class Game {
     this.floaters = [];
     this.accum = 0;
   }
-  async loadMission(mddName, heroKey = 'wolverine') {
+  async loadMission(mddName, heroKey = 'wolverine', spawnN = 1) {
+    this.missionName = mddName;
     const mission = parseMission(await this.assets.bytes(mddName));
     this.mission = mission;
     this.level = await Level.load(this.assets, mission.map);
@@ -41,7 +45,7 @@ export class Game {
     this.notices = [];
     if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
     this.time = 0;
-    const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
+    const spawn = mission.records.find(r => r.type === 4 && r.name.toLowerCase() === `spawn${spawnN}`) || mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
     this.player.team = 0;
     this.actors.push(this.player);
@@ -51,6 +55,45 @@ export class Game {
       npc.name = r.name;
       this.actors.push(npc);
     }
+    this.playerControl = true;
+    this.fadeLevel = 0;
+    this.objectiveList = this.objectiveList || [];
+    if (!this.objectiveText) { this.objectiveText = await this.assets.text('objectives.txt'); this.scriptText = await this.assets.text('scripts.txt'); }
+    this.script = new ScriptRuntime(this, mission);
+    const Cls = missionScriptFor(mddName);
+    this.missionScript = new Cls(this, this.script);
+    this.missionScript.init();
+    Promise.resolve().then(() => this.missionScript.start()).catch(e => console.error('mission start', e));
+  }
+  async spawnCharacter(key, x, y, name) {
+    const c = await Character.create(this, key, x, y);
+    c.name = name || key;
+    this.actors.push(c);
+    return c;
+  }
+  removeActor(a) { this.actors = this.actors.filter(x => x !== a); }
+  party() { return this.actors.filter(a => a.team === 0 && a.isHero); }
+  async setObjective(index, state) {
+    const existing = this.objectiveList.find(o => o.index === index);
+    if (existing) existing.state = state; else this.objectiveList.push({ index, state });
+    const text = this.objectiveText[index];
+    if (text) this.notify(text, 90);
+  }
+  scriptMessage(index) { const t = this.scriptText && this.scriptText[index]; if (t) this.notify(t, 70); }
+  itemNameByName(name) { const it = this.assets.items.find(i => i.name.toLowerCase() === name.toLowerCase()); return it ? this.itemName(it) : name; }
+  fade(target) {
+    return new Promise(res => { this.fadeTarget = target; this.fadeDone = res; });
+  }
+  async changeLevel(mdd, spawnN = 1) {
+    const hero = this.player ? this.player.key : 'wolverine';
+    this.loading = true;
+    await this.loadMission(mdd.endsWith('.mdd') ? mdd : mdd + '.mdd', hero, spawnN);
+    this.loading = false;
+    this.fadeLevel = 1; this.fadeTarget = 0;
+  }
+  async completeEpisode(spawnN = 1) {
+    // TODO: episode table progression (docs/specs/missions.md §3); for now continue to the next listed episode map
+    this.notify('Episode complete', 90);
   }
   itemName(item) {
     return (item.level ? this.abilityNames : this.itemNames)[item.stringIndex] || item.name;
@@ -87,7 +130,13 @@ export class Game {
       this.input.endFrame();
       return;
     }
-    const move = this.readMove();
+    if (this.loading) { this.input.endFrame(); return; }
+    if (this.fadeTarget !== undefined && this.fadeTarget !== null) {
+      this.fadeLevel += this.fadeTarget > this.fadeLevel ? 0.1 : -0.1;
+      if (Math.abs(this.fadeLevel - this.fadeTarget) < 0.05) { this.fadeLevel = this.fadeTarget; this.fadeTarget = null; if (this.fadeDone) { const d = this.fadeDone; this.fadeDone = null; d(); } }
+    }
+    if (this.script) this.script.update(TICK_MS);
+    const move = this.playerControl ? this.readMove() : null;
     for (const a of this.actors) a.update(this.level, a === this.player ? move : null);
     for (const f of this.floaters) { f.life--; f.z += 3; }
     this.floaters = this.floaters.filter(f => f.life > 0);
@@ -122,6 +171,7 @@ export class Game {
     }
     if (this.hud) {
       this.hud.draw(g);
+      if (this.fadeLevel > 0) { g.fillStyle = `rgba(0,0,0,${this.fadeLevel})`; g.fillRect(0, 0, SCREEN_W, SCREEN_H); }
       if (this.dialogue) this.dialogue.draw(g);
       (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
     }

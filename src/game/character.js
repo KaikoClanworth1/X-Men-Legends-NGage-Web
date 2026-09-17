@@ -54,6 +54,7 @@ export class Character {
     return c;
   }
   stat(i) { return this.base[i] + this.bonus[i]; }
+  setLevel(n) { this.level = n; this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this); this.hp = this.maxHP; this.energy = this.maxEnergy; }
   taken(el) { return this.def ? this.def.taken[el] : 100; }
   bonusFlat(el) { return this.def ? this.def.flat[el] : 0; }
   bonusPct(el) { return this.def ? this.def.pct[el] : 0; }
@@ -95,7 +96,11 @@ export class Character {
   }
   takeDamage(attacker, dmg) {
     if (!this.alive) return;
-    this.hp = Math.max(0, this.hp - dmg);
+    this.hp = Math.max(this.unkillable ? 1 : 0, this.hp - dmg);
+    if (this.unkillable && this.hp <= 1) {
+      if (!this.defeatedFired) { this.defeatedFired = true; this.target = null; if (this.game.script) this.game.script.fire(this.name || this.key, 4, { character: this }); }
+      return;
+    }
     this.game.floatText(this, String(dmg));
     this.flash = 3;
     if (this.statusTimers.sleep > 0) this.statusTimers.sleep = 1;
@@ -107,6 +112,7 @@ export class Character {
   }
   die(killer) {
     this.state = S.DIE;
+    if (this.game.script) this.game.script.fire(this.name || this.key, 4, { character: this, killer });
     this.play(ANIM.d01, true);
     this.busy = Math.round(2000 / TICK_MS);
     if (killer && killer.isHero) killer.gainXP(killXP(this.level));
@@ -205,7 +211,7 @@ export class Character {
   }
   updatePlayer(level, move) {
     const input = this.game.input;
-    if (input.wasPressed('attack')) {
+    if (input.wasPressed('attack') && !(this.game.script && this.game.script.actionConsumed)) {
       const target = this.game.actors.filter(a => a !== this && a.alive && this.isEnemyOf(a) && this.distTo(a) <= this.reach + 60)
         .sort((a, b) => this.distTo(a) - this.distTo(b))[0];
       this.startMelee(target);
