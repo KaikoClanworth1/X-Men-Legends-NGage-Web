@@ -13,13 +13,24 @@
   #status { color: var(--dim); min-height: 1.2em; }
   .keys { color: var(--dim); font-size: 12px; }
   @media (orientation: landscape) { #screen { height: 85vh; width: auto; } }
+  #volume { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 12px 8px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); user-select: none; }
+  #volume input { writing-mode: vertical-lr; direction: rtl; width: 22px; height: 160px; accent-color: var(--acc); cursor: pointer; }
+  #volume button { background: none; border: 0; color: var(--fg); font-size: 20px; cursor: pointer; padding: 2px; line-height: 1; }
+  #volume span { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 600px) { #volume { top: 60px; transform: none; right: 8px; } #volume input { height: 110px; } }
 </style>
 </head>
 <body>
   <canvas id="screen" width="176" height="208"></canvas>
+  <div id="volume" title="Volume">
+    <span id="volume-value">80%</span>
+    <input id="volume-slider" type="range" min="0" max="100" step="1" value="80" aria-label="Volume">
+    <button id="volume-mute" aria-label="Mute">🔊</button>
+  </div>
   <div id="setup"><input type="file" id="file" accept=".pkg"></div>
   <div id="status"></div>
-  <div class="keys">Move: arrows/WASD · Attack: 5/J · Power: 7/K (hold, release) · Characters: 8/L · Items: 6/I · Specials: 4/U · Menu: Enter</div>
+  <div class="keys">Move: arrows/WASD · Attack: 5/J · Power: 7/K (hold, release) · Characters: 8/L · Items: 6/I · Specials: 4/U · Menu: Enter · Back: Esc</div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

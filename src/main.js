@@ -3,7 +3,25 @@ import { Input } from './engine/input.js';
 import { installTouchControls } from './engine/touch.js';
 import { Game } from './game/game.js';
 import { FrontEnd } from './game/frontend.js';
-import { audioContext } from './audio/audio.js';
+import { audioContext, settings, setVolume, setMuted, onVolumeChange } from './audio/audio.js';
+
+// side volume slider (master volume + mute), kept in sync with the in-game Options
+{
+  const slider = document.querySelector('#volume-slider'), label = document.querySelector('#volume-value'), mute = document.querySelector('#volume-mute');
+  const sync = () => {
+    const v = Math.round(settings.master * 100);
+    slider.value = v; label.textContent = settings.muted ? 'muted' : `${v}%`;
+    mute.textContent = settings.muted || v === 0 ? '🔇' : v < 50 ? '🔉' : '🔊';
+  };
+  slider.addEventListener('input', () => { const v = slider.value / 100; if (settings.muted) setMuted(false); setVolume('master', v); try { audioContext(); } catch { /* no audio */ } });
+  mute.addEventListener('click', () => { setMuted(!settings.muted); sync(); });
+  // hand keyboard focus back to the game after using the controls
+  slider.addEventListener('change', () => slider.blur());
+  mute.addEventListener('mouseup', () => mute.blur());
+  for (const el of [slider, mute]) el.addEventListener('keydown', e => e.stopPropagation());
+  onVolumeChange(sync);
+  sync();
+}
 
 // browsers only start audio after a user gesture
 for (const ev of ['keydown', 'pointerdown']) window.addEventListener(ev, () => { try { audioContext(); if (window.game) window.game.updateMusic(true); } catch { /* no audio */ } }, { once: true });

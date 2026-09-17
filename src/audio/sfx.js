@@ -1,4 +1,4 @@
-import { audioContext, bus } from './audio.js';
+import { audioContext, bus, makeBuffer } from './audio.js';
 import { parseBank } from './music.js';
 
 // Sound effects from the sound banks in the player's assets.pkg (8 kHz A-law clips).
@@ -24,9 +24,9 @@ export class Sfx {
         const clips = parseBank(await this.assets.bytes(file)), out = new Map(), ac = audioContext();
         for (const [clip, data] of clips) {
           if (/^loop_/.test(clip)) continue;
-          const buf = ac.createBuffer(1, Math.max(1, data.length), 8000), ch = buf.getChannelData(0);
-          for (let i = 0; i < data.length; i++) ch[i] = alaw(data[i]);
-          out.set(clip, buf);
+          const pcm = new Float32Array(Math.max(1, data.length));
+          for (let i = 0; i < data.length; i++) pcm[i] = alaw(data[i]);
+          out.set(clip, makeBuffer(pcm, 8000));
         }
         return out;
       })());
@@ -46,10 +46,11 @@ export class Sfx {
     if (now - (this.lastPlayed.get(key) || 0) < 60) return;
     this.lastPlayed.set(key, now);
     const ac = audioContext(), src = ac.createBufferSource(), gain = ac.createGain();
-    gain.gain.value = volume;
+    const t = ac.currentTime;
+    gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(volume, t + 0.004);
     src.buffer = buf;
     src.connect(gain).connect(bus('sfx'));
-    src.start();
+    src.start(t);
   }
   // named game events
   swing(hit) { this.play('game1.swb', hit ? ['punch_impact_01', 'punch_impact_03'] : ['swing_miss_01', 'swing_miss_03']); }

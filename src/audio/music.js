@@ -1,4 +1,4 @@
-import { audioContext, bus } from './audio.js';
+import { audioContext, bus, makeBuffer } from './audio.js';
 
 // Sound banks (.swb): "SW3\0", u16 count, u16, u32; 36-byte entries (char[24] name, u32 flags, u32 size, u32 offset from table end);
 // samples are 8 kHz 8-bit A-law. Music is short looping clips: menu1.swb/loop_menu, game1.swb/loop_battle + loop_boss,
@@ -37,9 +37,9 @@ export class Music {
         if (!this.assets.has(bank)) return null;
         const data = parseBank(await this.assets.bytes(bank)).get(clip.toLowerCase());
         if (!data) return null;
-        const ac = audioContext(), buf = ac.createBuffer(1, data.length, 8000), ch = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) ch[i] = alaw(data[i]);
-        return buf;
+        const pcm = new Float32Array(data.length);
+        for (let i = 0; i < data.length; i++) pcm[i] = alaw(data[i]);
+        return makeBuffer(pcm, 8000, true);
       })());
     }
     return this.buffers.get(key);
@@ -54,15 +54,17 @@ export class Music {
     this.stop();
     if (!buf) return;
     const ac = audioContext(), src = ac.createBufferSource(), gain = ac.createGain();
-    gain.gain.value = 1;
+    const t = ac.currentTime;
+    gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(1, t + 0.3);
     src.buffer = buf; src.loop = true;
     src.connect(gain).connect(bus('music'));
-    src.start();
+    src.start(t);
     this.current = { key, src, gain };
   }
   stop() {
     if (!this.current) return;
-    try { this.current.src.stop(); } catch { /* already stopped */ }
+    const { src, gain } = this.current, t = audioContext().currentTime;
+    try { gain.gain.cancelScheduledValues(t); gain.gain.setValueAtTime(gain.gain.value, t); gain.gain.linearRampToValueAtTime(0, t + 0.25); src.stop(t + 0.3); } catch { /* already stopped */ }
     this.current = null;
   }
 }
