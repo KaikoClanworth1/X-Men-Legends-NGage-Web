@@ -2,6 +2,7 @@ import { ANIMS, ANIM } from '../formats/data.js';
 import { worldToScreen } from '../engine/level.js';
 import { moveWithCollision, resolveMove } from '../engine/collision.js';
 import { maxHP, maxEnergy, rollMelee, meleeDamage, knockback, isDisabled, randInt, killXP, XP_TABLE } from './combat.js';
+import { availablePowers, castPower, resolvePower } from './powers.js';
 
 export const TICK_MS = 40;          // fixed 40 ms game tick (CPeriodic, docs/specs/core.md)
 
@@ -39,6 +40,7 @@ export class Character {
     c.team = c.isHero ? 0 : c.isNPC ? 2 : 1;
     c.maxHP = maxHP(c); c.hp = c.maxHP;
     c.maxEnergy = maxEnergy(c); c.energy = c.maxEnergy;
+    c.effects = []; c.selectedPower = 0; c.pendingPower = null;
     c.state = S.IDLE; c.cooldown = 0; c.scanTimer = randInt(9); c.target = null; c.busy = 0;
     c.sheets = {};
     if (def) {
@@ -67,6 +69,9 @@ export class Character {
   }
   face(other) { this.facing = dirTowards(other.x - this.x, other.y - this.y); }
   distTo(o) { return Math.hypot(o.x - this.x, o.y - this.y); }
+  nearestEnemy(range) {
+    return this.game.actors.filter(a => a !== this && a.alive && this.isEnemyOf(a) && this.distTo(a) <= range).sort((a, b) => this.distTo(a) - this.distTo(b))[0] || null;
+  }
   isEnemyOf(o) { return o.team !== this.team && o.team !== 2 && this.team !== 2; }
 
   // --- actions -------------------------------------------------------------
@@ -115,11 +120,47 @@ export class Character {
     }
   }
 
+  // timed item/power effect instances: tick every item.tick ms, expire after item.duration; duplicates rejected (VA 0x1000bd7c)
+  addEffect(item, source) {
+    if (this.effects.some(e => e.item === item)) return;
+    this.effects.push({ item, source, next: item.tick || Infinity, left: item.duration });
+    this.recalcBonuses();
+  }
+  recalcBonuses() {
+    this.bonus = [0, 0, 0, 0];
+    for (const e of this.effects) e.item.stats.forEach((v, i) => { this.bonus[i] += v; });
+  }
+  updateEffects() {
+    let changed = false;
+    for (const e of this.effects) {
+      e.left -= TICK_MS; e.next -= TICK_MS;
+      if (e.next <= 0) {
+        e.next += e.item.tick;
+        if (e.item.energyTick) this.energy = Math.max(0, Math.min(this.maxEnergy, this.energy + e.item.energyTick));
+        if (e.item.healTick) this.hp = Math.min(this.maxHP, this.hp + e.item.healTick);
+        if (e.item.dotTick && this.alive) this.takeDamage(e.source, e.item.dotTick);
+      }
+    }
+    const before = this.effects.length;
+    this.effects = this.effects.filter(e => e.left > 0);
+    if (this.effects.length !== before) changed = true;
+    if (changed) this.recalcBonuses();
+  }
+  powers() { return availablePowers(this); }
+  startPower(power, target) {
+    if (!this.alive || isDisabled(this) || this.state === S.SPECIAL || this.state === S.MELEE) return false;
+    if (!castPower(this, power, target)) return false;
+    this.state = S.SPECIAL;
+    return true;
+  }
+
   // --- per tick ------------------------------------------------------------
   update(level, move) {
     for (const k in this.statusTimers) if (this.statusTimers[k] > 0) this.statusTimers[k] = Math.max(0, this.statusTimers[k] - TICK_MS);
     if (this.flash) this.flash--;
     if (this.cooldown > 0) this.cooldown -= TICK_MS;
+    if (this.effects.length) this.updateEffects();
+    if (this.pendingPower && --this.pendingPower.timer <= 0) { const pp = this.pendingPower; this.pendingPower = null; resolvePower(this, pp); }
 
     if (this.state === S.DIE) {
       this.advanceAnim();
@@ -128,7 +169,7 @@ export class Character {
     }
     if (this.state === S.DEAD) return;
 
-    if (this.state === S.MELEE) {
+    if (this.state === S.MELEE || this.state === S.SPECIAL) {
       this.advanceAnim();
       if (this.animDone) { this.state = S.IDLE; this.play(ANIM.i01); }
       return;
@@ -165,6 +206,13 @@ export class Character {
       this.startMelee(target);
       return;
     }
+    if (input.isDown('power')) this.aiming = true;
+    else if (this.aiming) {
+      this.aiming = false;
+      const list = this.powers(), power = list[this.selectedPower % Math.max(1, list.length)];
+      const target = this.nearestEnemy(power ? Math.max(power.item.range, 300) : 300);
+      if (power) { this.startPower(power, target); return; }
+    }
     if (move !== null) { this.state = S.RUN; this.moveToward(level, move, true); }
     else { this.state = S.IDLE; this.play(ANIM.i01); }
   }
@@ -190,7 +238,9 @@ export class Character {
     if (d <= this.reach + t.radius - 10) {
       this.face(t);
       if (this.cooldown <= 0) {
-        this.startMelee(t);
+        const opts = this.powers().filter(p => (p.item.cls & 2) && p.item.cost <= this.energy && d <= Math.max(p.item.range, p.item.radius, this.reach) + 40);
+        if (opts.length && (randInt(256) & 7) < opts.length) this.startPower(opts[randInt(opts.length)], t);
+        else this.startMelee(t);
         this.cooldown = ((randInt(256)) + 200) * 10;
       } else { this.state = S.IDLE; this.play(ANIM.i01); }
     } else {

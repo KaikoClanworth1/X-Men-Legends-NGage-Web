@@ -2,7 +2,9 @@ import { Level, worldToScreen } from '../engine/level.js';
 import { parseMission } from '../formats/map.js';
 import { Character, TICK_MS, S } from './character.js';
 import { Hud } from './hud.js';
+import { Particles } from '../engine/particles.js';
 
+const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
 
 export class Game {
@@ -24,6 +26,8 @@ export class Game {
     this.floaters = [];
     this.cam = null; this.camK = 0x1000; this.lead = null;
     if (!this.hud) this.hud = await Hud.load(this);
+    if (!this.particles) this.particles = await Particles.load(this.assets);
+    this.particles.active = [];
     const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
     this.player.team = 0;
@@ -66,6 +70,7 @@ export class Game {
     for (const f of this.floaters) { f.life--; f.z += 3; }
     this.floaters = this.floaters.filter(f => f.life > 0);
     if (this.hud) this.hud.update();
+    if (this.particles) this.particles.update(TICK_MS);
     this.updateCamera();
     this.level.tick++;
     this.input.endFrame();
@@ -77,8 +82,10 @@ export class Game {
     if (!this.level) return;
     const p = this.player;
     if (!this.cam) this.updateCamera();
-    const camX = this.cam[0] - SCREEN_W / 2, camY = this.cam[1] - SCREEN_H / 2;
+    let camX = this.cam[0] - SCREEN_W / 2, camY = this.cam[1] - SCREEN_H / 2;
+    if (this.shake && performance.now() < this.shake.until) { camX += randShake(this.shake.strength); camY += randShake(this.shake.strength); }
     this.level.draw(g, camX, camY, SCREEN_W, SCREEN_H, this.actors.filter(a => a.state !== S.DEAD));
+    if (this.particles) this.particles.draw(g, camX, camY);
     g.font = '7px monospace';
     g.textAlign = 'center';
     for (const f of this.floaters) {
