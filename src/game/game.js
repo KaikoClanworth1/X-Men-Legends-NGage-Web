@@ -11,6 +11,7 @@ import { ScriptRuntime } from './script.js';
 import { missionScriptFor } from './missions/index.js';
 import './missions/e01m01.js';
 import { EPISODES, partyForEpisode } from './progression.js';
+import { QuickMenu } from './quickmenu.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -45,6 +46,7 @@ export class Game {
     if (!this.itemNames) { this.itemNames = await this.assets.text('items.txt'); this.abilityNames = await this.assets.text('abilities.txt'); }
     this.notices = [];
     if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
+    if (!this.quick) this.quick = await QuickMenu.load(this);
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && r.name.toLowerCase() === `spawn${spawnN}`) || mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     const keys = partyKeys || this.partyKeys || [heroKey];
@@ -163,7 +165,9 @@ export class Game {
     }
     if (this.script) this.script.update(TICK_MS);
     if (this.playerControl && this.input.wasPressed('characters')) this.switchHero();
-    const move = this.playerControl ? this.readMove() : null;
+    const menuOpen = this.quick && this.playerControl && this.quick.update(this.input);
+    if (menuOpen && this.hud) for (const a of this.party()) this.hud.portrait(a.key);
+    const move = this.playerControl && !menuOpen ? this.readMove() : null;
     for (const a of this.actors) a.update(this.level, a === this.player ? move : null);
     for (const f of this.floaters) { f.life--; f.z += 3; }
     this.floaters = this.floaters.filter(f => f.life > 0);
@@ -199,6 +203,7 @@ export class Game {
     }
     if (this.hud) {
       this.hud.draw(g);
+      if (this.quick) this.quick.draw(g);
       if (this.fadeLevel > 0) { g.fillStyle = `rgba(0,0,0,${this.fadeLevel})`; g.fillRect(0, 0, SCREEN_W, SCREEN_H); }
       if (this.dialogue) this.dialogue.draw(g);
       (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
