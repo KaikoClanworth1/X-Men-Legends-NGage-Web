@@ -1,6 +1,7 @@
 import { Font } from '../engine/font.js';
 import { EPISODES, DEFAULT_PARTY, HEROES, partyForEpisode } from './progression.js';
 import { SLOTS, readSave, slotLabel, restore } from './save.js';
+import { settings, setVolume } from '../audio/audio.js';
 
 // Front end (docs/specs/ui.md §1): title screen, generic list menus.
 // List menu: background at (0,0); selector.spr frame 1 per row at (0, 49+21*i), frame 0 highlight; items menu.fnt x=9, pitch 21, 7 visible;
@@ -36,6 +37,10 @@ export class FrontEnd {
       levels: this.game.assets.pkg.list('.mdd').sort().map(name => ({ label: name.replace('.mdd', ''), go: () => this.startMission(name, EPISODES.findIndex(e => e.mdd.toLowerCase() === name.toLowerCase())) })),
       options: [
         { label: 'Language: ' + (this.game.lang || 'en'), go: () => { const langs = ['en', 'fr', 'gr', 'it', 'sp']; this.game.lang = langs[(langs.indexOf(this.game.lang || 'en') + 1) % langs.length]; } },
+        ...['music', 'sfx', 'voice'].map(k => ({
+          label: `${k === 'sfx' ? 'Sound' : k[0].toUpperCase() + k.slice(1)}: ${'|'.repeat(Math.round(settings[k] * 10)).padEnd(10, '.')}`,
+          adjust: d => setVolume(k, settings[k] + d * 0.1), go: () => setVolume(k, settings[k] >= 1 ? 0 : settings[k] + 0.1),
+        })),
       ],
     };
   }
@@ -65,6 +70,8 @@ export class FrontEnd {
     if (input.wasPressed('down')) { this.cursor = (this.cursor + 1) % items.length; this.game.sfx.menu('scroll'); }
     if (this.cursor < this.scroll) this.scroll = this.cursor;
     if (this.cursor >= this.scroll + 7) this.scroll = this.cursor - 6;
+    const cur = items[this.cursor];
+    if (cur && cur.adjust && (input.wasPressed('left') || input.wasPressed('right'))) { cur.adjust(input.wasPressed('left') ? -1 : 1); this.game.sfx.menu('scroll'); }
     if (input.wasPressed('attack') || input.wasPressed('menu')) { const it = items[this.cursor]; if (it) { this.game.sfx.menu('accept'); it.go(); } }
     if (input.wasPressed('back')) { this.game.sfx.menu('back'); this.back(); }
   }

@@ -34,7 +34,7 @@ export function slotLabel(slot) {
   const s = readSave(slot);
   if (!s) return `${SLOTS[slot]}  -----`;
   const secs = Math.floor((s.playMs || 0) / 1000);
-  return `${s.mission.replace('.mdd', '')}   ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  return `${slot === 0 ? 'Auto ' : ''}${s.mission.replace('.mdd', '')}   ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 }
 
 export async function restore(game, data) {

@@ -51,7 +51,11 @@ export function installTouchControls(input) {
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     box.append(el);
   }
-  const menu = document.createElement('div'); menu.className = 'tc-menu'; menu.textContent = 'Menu';
-  menu.addEventListener('pointerdown', e => { input.pressed.add('menu'); e.preventDefault(); });
-  document.body.append(pad, box, menu);
+  const soft = (label, action, side) => {
+    const el = document.createElement('div'); el.className = 'tc-menu'; el.textContent = label;
+    el.style[side] = '10px'; if (side === 'left') el.style.right = 'auto';
+    el.addEventListener('pointerdown', e => { input.pressed.add(action); e.preventDefault(); });
+    return el;
+  };
+  document.body.append(pad, box, soft('Back', 'back', 'left'), soft('Menu', 'menu', 'right'));
 }
