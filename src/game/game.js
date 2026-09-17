@@ -10,6 +10,7 @@ import { Voice } from '../audio/audio.js';
 import { ScriptRuntime } from './script.js';
 import { missionScriptFor } from './missions/index.js';
 import './missions/e01m01.js';
+import { EPISODES, partyForEpisode } from './progression.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -25,7 +26,7 @@ export class Game {
     this.floaters = [];
     this.accum = 0;
   }
-  async loadMission(mddName, heroKey = 'wolverine', spawnN = 1) {
+  async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
     this.missionName = mddName;
     const mission = parseMission(await this.assets.bytes(mddName));
     this.mission = mission;
@@ -46,11 +47,18 @@ export class Game {
     if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && r.name.toLowerCase() === `spawn${spawnN}`) || mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
-    this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
-    this.player.team = 0;
-    this.actors.push(this.player);
+    const keys = partyKeys || this.partyKeys || [heroKey];
+    this.partyKeys = [heroKey, ...keys.filter(k => k !== heroKey)].slice(0, 4);
+    const offsets = [[50, 50], [-30, 90], [90, -30], [-40, -40]];
+    for (let i = 0; i < this.partyKeys.length; i++) {
+      const hero = await Character.create(this, this.partyKeys[i], spawn.x + offsets[i][0], spawn.y + offsets[i][1]);
+      hero.team = 0; hero.name = this.partyKeys[i]; hero.isHero = true;
+      this.actors.push(hero);
+      if (i === 0) this.player = hero;
+    }
     for (const r of mission.records.filter(r => r.type === 0)) {
       if (!this.assets.characters.get(r.kind.toLowerCase())) continue;
+      if (this.partyKeys.includes(r.kind.toLowerCase())) continue;          // party members replace their placed copies
       const npc = await Character.create(this, r.kind, r.x, r.y);
       npc.name = r.name;
       this.actors.push(npc);
@@ -91,9 +99,26 @@ export class Game {
     this.loading = false;
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
+  // CompleteEpisode (VA 0x10029d74): store party, advance the episode table, load its map at spawnN
   async completeEpisode(spawnN = 1) {
-    // TODO: episode table progression (docs/specs/missions.md §3); for now continue to the next listed episode map
-    this.notify('Episode complete', 90);
+    this.episode = Math.min(EPISODES.length - 1, (this.episode ?? EPISODES.findIndex(e => e.mdd === this.missionName)) + 1);
+    const ep = EPISODES[this.episode];
+    const prevIdx = this.partyKeys.map(k => ['beast', 'colossus', 'cyclops', 'gambit', 'iceman', 'phoenix', 'magma', 'ncrawler', 'rogue', 'storm', 'wolverine'].indexOf(k));
+    const keys = partyForEpisode(ep, prevIdx);
+    this.loading = true;
+    await this.loadMission(ep.mdd, keys[0], spawnN, keys);
+    this.loading = false;
+    this.fadeLevel = 1; this.fadeTarget = 0;
+  }
+  // switch controlled hero to the next living party member (SetActiveHero VA 0x10047c5c)
+  switchHero() {
+    const party = this.party().filter(a => a.alive);
+    if (party.length < 2) return;
+    const i = party.indexOf(this.player);
+    this.player = party[(i + 1) % party.length];
+    this.lead = null;
+    const names = this.hud && this.player.def ? this.hud.names[this.player.def.nameId] : this.player.key;
+    this.notify(names, 40);
   }
   itemName(item) {
     return (item.level ? this.abilityNames : this.itemNames)[item.stringIndex] || item.name;
@@ -136,6 +161,7 @@ export class Game {
       if (Math.abs(this.fadeLevel - this.fadeTarget) < 0.05) { this.fadeLevel = this.fadeTarget; this.fadeTarget = null; if (this.fadeDone) { const d = this.fadeDone; this.fadeDone = null; d(); } }
     }
     if (this.script) this.script.update(TICK_MS);
+    if (this.playerControl && this.input.wasPressed('characters')) this.switchHero();
     const move = this.playerControl ? this.readMove() : null;
     for (const a of this.actors) a.update(this.level, a === this.player ? move : null);
     for (const f of this.floaters) { f.life--; f.z += 3; }

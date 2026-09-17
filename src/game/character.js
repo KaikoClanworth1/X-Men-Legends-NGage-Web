@@ -189,6 +189,7 @@ export class Character {
 
     if (this === this.game.player) this.updatePlayer(level, move);
     else if (this.team === 1) this.updateEnemyAI(level);
+    else if (this.team === 0 && this.isHero) this.updateTeammateAI(level);
     else this.play(ANIM.i01);
     this.advanceAnim();
   }
@@ -259,6 +260,32 @@ export class Character {
       this.walk(level, t.x - this.x, t.y - this.y, d > 300);
     }
     void hero;
+  }
+  // AI teammates: attack enemies near the leader, otherwise follow; they ignore walls (collision mode 1, docs/specs/core.md)
+  updateTeammateAI(level) {
+    const leader = this.game.player;
+    if (this.target && (!this.target.alive || !this.isEnemyOf(this.target) || this.target.distTo(leader) > 700)) this.target = null;
+    if (!this.target && --this.scanTimer <= 0) { this.scanTimer = 9; this.target = leader.nearestEnemy(500); }
+    const t = this.target;
+    if (t) {
+      const d = this.distTo(t);
+      if (d <= this.reach + 20) {
+        this.face(t);
+        if (this.cooldown <= 0) { this.startMelee(t); this.cooldown = 900 + randInt(600); } else { this.state = S.IDLE; this.play(ANIM.i01); }
+      } else { this.state = S.RUN; this.moveTowardFree(t.x - this.x, t.y - this.y); }
+      return;
+    }
+    const d = this.distTo(leader);
+    if (d > 180) { this.state = S.RUN; this.moveTowardFree(leader.x - this.x, leader.y - this.y); }
+    else { this.state = S.IDLE; this.play(ANIM.i01); }
+  }
+  moveTowardFree(vx, vy) {
+    const desired = angleTowards(vx, vy), diff = (desired - this.facing + 1024) & 0x3ff;
+    if (diff) this.facing = (this.facing + (diff <= 0x200 ? 0x80 : -0x80) + 1024) & 0x3ff;
+    this.play(this.sheets[ANIM.r01] ? ANIM.r01 : ANIM.w01);
+    if (diff > 0x80 && diff < 1024 - 0x80) return;
+    const [dx, dy] = stepForAngle(this.facing, this.moveSpeed);
+    this.x += dx * 2; this.y += dy * 2;
   }
   advanceAnim() {
     const sheet = this.sheets[this.anim];

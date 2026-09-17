@@ -25,7 +25,8 @@ async function boot(buffer) {
   const params = new URLSearchParams(location.search);
   const mission = params.get('mission') || 'e01m01.mdd', hero = params.get('hero') || 'wolverine';
   status(`Loading ${mission}…`);
-  await game.loadMission(mission, hero);
+  const party = params.get('party') ? params.get('party').split(',') : [hero, 'cyclops', 'phoenix', 'rogue'].filter((k, i, a) => a.indexOf(k) === i).slice(0, 4);
+  await game.loadMission(mission, hero, 1, party);
   $('#setup').hidden = true;
   status('');
   game.start();
