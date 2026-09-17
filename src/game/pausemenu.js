@@ -101,7 +101,7 @@ export class PauseMenu {
 
   update(input) {
     const g = this.game;
-    if (!this.screen) { if (input.wasPressed('menu') && g.playerControl) this.open(); return false; }
+    if (!this.screen) { if ((input.wasPressed('menu') || input.wasPressed('back')) && g.playerControl && !(g.overlays && g.overlays.active)) this.open(); return false; }
     if (this.screen === 'stats') { this.updateStats(input); return true; }
     const items = this.items();
     const party = g.party();

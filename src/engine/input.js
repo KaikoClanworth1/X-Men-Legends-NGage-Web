@@ -15,7 +15,7 @@ const KEYMAP = {
   Digit9: 'objectives', Numpad9: 'objectives',
   Digit0: 'stats', Numpad0: 'stats',
   Digit3: 'map', Numpad3: 'map', KeyM: 'map',
-  Enter: 'menu', Escape: 'menu', Backspace: 'back',
+  Enter: 'menu', Escape: 'back', Backspace: 'back',
 };
 
 export class Input {
@@ -26,11 +26,17 @@ export class Input {
       const a = KEYMAP[e.code];
       if (!a) return;
       e.preventDefault();
+      this.heldKeys.add(e.code);
       if (!this.down.has(a)) this.pressed.add(a);
       this.down.add(a);
     });
-    target.addEventListener('keyup', e => { const a = KEYMAP[e.code]; if (a) this.down.delete(a); });
-    window.addEventListener('blur', () => this.down.clear());
+    this.heldKeys = new Set();
+    target.addEventListener('keyup', e => {
+      const a = KEYMAP[e.code];
+      this.heldKeys.delete(e.code);
+      if (a && ![...this.heldKeys].some(k => KEYMAP[k] === a)) this.down.delete(a);
+    });
+    window.addEventListener('blur', () => { this.down.clear(); this.heldKeys.clear(); });
     this.prevPad = new Set();
   }
   pollGamepad() {

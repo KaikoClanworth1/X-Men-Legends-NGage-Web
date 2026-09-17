@@ -27,7 +27,7 @@ python -m http.server 8000
 Open <http://localhost:8000/> and choose your `assets.pkg`. It is remembered in the browser's IndexedDB, and you can
 also drop it next to `index.html`, where it is git-ignored. Dev URL parameters: `?mission=e01m01.mdd&hero=wolverine`.
 
-Controls: arrows/WASD move · J/Space attack (N-Gage 5) · K power (7) · U specials (4) · I items (6) · L/Tab switch hero (8) · O formation (2) · 9 objectives · 0 stats · M map (3) · Enter menu · gamepad and touch supported.
+Controls: arrows/WASD move · J/Space attack (N-Gage 5) · K power (7) · U specials (4) · I items (6) · L/Tab switch hero (8) · O formation (2) · 9 objectives · 0 stats · M map (3) · Enter menu / select · Esc or Backspace back · gamepad and touch supported.
 
 ## Layout
 
