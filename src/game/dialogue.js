@@ -57,7 +57,7 @@ export class Dialogue {
     // spoken line: "(Player)" is replaced by the leader's name/portrait
     const leader = this.game.player;
     const isPlayer = n.speaker === '(Player)';
-    a.speaker = isPlayer ? (this.game.hud && leader.def ? this.game.hud.names[leader.def.nameId] : leader.key) : n.speaker;
+    a.speaker = isPlayer ? (this.game.hud && leader.def ? this.game.hud.nameOf(leader.def) : leader.key) : n.speaker;
     a.portraitSprite = await this.portrait(isPlayer ? leader.key : n.portrait);
     a.lines = this.game.hud.fonts.small7.wrap(n.text, 168);
     a.choices = null;

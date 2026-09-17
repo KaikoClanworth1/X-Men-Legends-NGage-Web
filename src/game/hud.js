@@ -21,6 +21,23 @@ export class Hud {
     h.enemy = null; h.enemyFlash = 0;
     return h;
   }
+  // Display name for a character definition (characters.txt by nameId). The game's table calls the Sentinel units just
+  // "Scout" / "Cyborg", and variant models (magmaB, juggyB, civmaleb, illyana01, colossus02...) have no entry, so fall
+  // back to the base character's name.
+  nameOf(def) {
+    if (!def) return '';
+    const chars = this.game.assets.characters;
+    let name = this.names[def.nameId];
+    if (!name) {
+      const base = def.key.toLowerCase().replace(/(0\d|[bc])$/, '');
+      const alias = { juggy: 'juggernaut', illyana: 'illyana' }[base] || base;
+      const b = chars.get(alias);
+      name = b && b !== def ? this.names[b.nameId] : '';
+      if (!name) name = { illyana: 'Illyana' }[alias] || def.key;
+    }
+    if (/^sen/i.test(def.key) && !/sentinel/i.test(name)) name = `Sentinel ${name}`;
+    return name;
+  }
   async portrait(key) {
     if (!this.portraits.has(key)) this.portraits.set(key, await this.game.assets.sprite(key + '.spr'));
     return this.portraits.get(key);
@@ -49,7 +66,7 @@ export class Hud {
     else if (portrait && portrait.frames[0]) { const f = portrait.frames[0]; g.drawImage(f.canvas, 12 - f.hx, 12 - f.hy); }
     const hud = this.frame && this.frame.frames[0];
     if (hud) g.drawImage(hud.canvas, 0 - hud.hx, 0 - hud.hy);
-    const name = p.def ? this.names[p.def.nameId] : p.key;
+    const name = p.def ? this.nameOf(p.def) : p.key;
     this.fonts.small6.draw(g, name || '', 47, 1, { align: 'center' });
 
     // enemy meter bottom-right: w = hp*59/max, right-anchored at 154, y 200-206
@@ -60,7 +77,7 @@ export class Hud {
       const f0 = this.enemyMeter.frames[0], f1 = this.enemyMeter.frames[1];
       if (f0) g.drawImage(f0.canvas, 135 - f0.hx, 196 - f0.hy);
       if (f1 && this.enemyFlash) g.drawImage(f1.canvas, 165 - f1.hx, 196 - f1.hy);
-      const en = e.def ? this.names[e.def.nameId] : e.key;
+      const en = e.def ? this.nameOf(e.def) : e.key;
       this.fonts.arial.draw(g, en || '', 125, 187 - 8, { align: 'center' });
     }
     for (const n of this.numbers) {

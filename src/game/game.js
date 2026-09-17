@@ -277,7 +277,7 @@ export class Game {
     const i = party.indexOf(this.player);
     this.player = party[(i + 1) % party.length];
     this.lead = null;
-    const names = this.hud && this.player.def ? this.hud.names[this.player.def.nameId] : this.player.key;
+    const names = this.hud && this.player.def ? this.hud.nameOf(this.player.def) : this.player.key;
     this.notify(names, 40);
   }
   itemName(item) {

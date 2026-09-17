@@ -23,7 +23,7 @@ export class PauseMenu {
   go(screen) { this.screen = screen; this.cursor = 0; }
   fonts() { return this.game.frontend ? this.game.frontend.fonts : this.game.hud.fonts; }
   hero() { const party = this.game.party(); return party[this.heroIndex % Math.max(1, party.length)] || this.game.player; }
-  heroName(h) { return h.def ? this.game.hud.names[h.def.nameId] || h.key : h.key; }
+  heroName(h) { return h.def ? this.game.hud.nameOf(h.def) : h.key; }
 
   // --- list screens -----------------------------------------------------------------------------------------
   items() {
@@ -84,14 +84,19 @@ export class PauseMenu {
     return g.partyKeys.map((key, i) => {
       const forced = ep && ep.slots[i] !== 11 && ep.slots[i] !== 255;
       const def = g.assets.characters.get(key);
-      return { label: `${def ? g.hud.names[def.nameId] : key}${forced ? ' (required)' : ''}`, go: () => { if (forced) { g.notify('Required for this mission', 40); return; } this.teamSlot = i; this.go('teamPick'); } };
+      return { label: `${def ? g.hud.nameOf(def) : key}${forced ? ' (required)' : ''}`, go: () => { this.teamSlot = i; this.teamForced = forced; this.go('teamPick'); } };
     });
   }
   teamPickItems() {
     const g = this.game, ep = EPISODES[g.currentEpisode()] || null;
-    const unlocked = new Set([...(g.unlocked || []), ...g.partyKeys]);
-    return HEROES.filter(k => unlocked.has(k) && !g.partyKeys.includes(k) && !(ep && ep.lockMask >> HEROES.indexOf(k) & 1))
-      .map(k => ({ label: g.hud.names[g.assets.characters.get(k).nameId] || k, go: () => this.swapHero(this.teamSlot, k) }));
+    if (this.teamForced) return [{ label: 'Required for this mission', go: () => this.go('team') }];
+    // heroes you can pick: unlocked by the story, or already met in an earlier episode (forced into a party slot)
+    const epIndex = g.currentEpisode() ?? 0;
+    const met = EPISODES.slice(0, epIndex + 1).flatMap(e => e.slots).filter(s => s < HEROES.length).map(s => HEROES[s]);
+    const unlocked = new Set([...(g.unlocked || []), ...met, ...g.partyKeys]);
+    const list = HEROES.filter(k => unlocked.has(k) && !g.partyKeys.includes(k) && !(ep && ep.lockMask >> HEROES.indexOf(k) & 1) && g.assets.characters.get(k))
+      .map(k => ({ label: g.hud.nameOf(g.assets.characters.get(k)), go: () => this.swapHero(this.teamSlot, k) }));
+    return list.length ? list : [{ label: 'No other heroes available', go: () => this.go('team') }];
   }
   async swapHero(slot, key) {
     const g = this.game;
