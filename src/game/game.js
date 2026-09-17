@@ -10,6 +10,7 @@ import { Voice } from '../audio/audio.js';
 import { ScriptRuntime } from './script.js';
 import { missionScriptFor } from './missions/index.js';
 import './missions/e01m01.js';
+import './missions/e01.js';
 import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
 import { PauseMenu } from './pausemenu.js';
@@ -85,6 +86,7 @@ export class Game {
     this.actors.push(c);
     return c;
   }
+  unlockHeroes(keys) { this.unlocked = new Set([...(this.unlocked || []), ...keys]); }
   removeActor(a) { this.actors = this.actors.filter(x => x !== a); }
   party() { return this.actors.filter(a => a.team === 0 && a.isHero); }
   async setObjective(index, state) {
@@ -109,7 +111,9 @@ export class Game {
   }
   // CompleteEpisode (VA 0x10029d74): store party, advance the episode table, load its map at spawnN
   async completeEpisode(spawnN = 1) {
-    this.episode = Math.min(EPISODES.length - 1, (this.episode ?? EPISODES.findIndex(e => e.mdd === this.missionName)) + 1);
+    // current episode: explicit, else by episode prefix of the current map (e01m02 -> table row starting e01)
+    const cur = this.episode ?? EPISODES.findIndex(e => e.mdd.slice(0, 3).toLowerCase() === (this.missionName || '').slice(0, 3).toLowerCase());
+    this.episode = Math.min(EPISODES.length - 1, Math.max(0, cur) + 1);
     const ep = EPISODES[this.episode];
     const prevIdx = this.partyKeys.map(k => ['beast', 'colossus', 'cyclops', 'gambit', 'iceman', 'phoenix', 'magma', 'ncrawler', 'rogue', 'storm', 'wolverine'].indexOf(k));
     const keys = partyForEpisode(ep, prevIdx);
