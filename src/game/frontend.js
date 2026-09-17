@@ -1,5 +1,6 @@
 import { Font } from '../engine/font.js';
 import { EPISODES, DEFAULT_PARTY, HEROES, partyForEpisode } from './progression.js';
+import { SLOTS, readSave, slotLabel, restore } from './save.js';
 
 // Front end (docs/specs/ui.md §1): title screen, generic list menus.
 // List menu: background at (0,0); selector.spr frame 1 per row at (0, 49+21*i), frame 0 highlight; items menu.fnt x=9, pitch 21, 7 visible;
@@ -28,8 +29,10 @@ export class FrontEnd {
       ],
       single: [
         { label: 'New Game', go: () => this.startMission(EPISODES[1].mdd, 1) },
+        { label: 'Load', go: () => this.open('load') },
         { label: 'Level Select', go: () => this.open('levels') },
       ],
+      load: SLOTS.map((_, i) => ({ label: slotLabel(i), go: async () => { const d = readSave(i); if (!d) return; this.screen = 'loading'; await restore(this.game, d); this.screen = null; } })),
       levels: this.game.assets.pkg.list('.mdd').sort().map(name => ({ label: name.replace('.mdd', ''), go: () => this.startMission(name, EPISODES.findIndex(e => e.mdd.toLowerCase() === name.toLowerCase())) })),
       options: [
         { label: 'Language: ' + (this.game.lang || 'en'), go: () => { const langs = ['en', 'fr', 'gr', 'it', 'sp']; this.game.lang = langs[(langs.indexOf(this.game.lang || 'en') + 1) % langs.length]; } },

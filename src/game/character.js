@@ -120,7 +120,15 @@ export class Character {
   gainXP(n) {
     this.xp += n;
     while (this.level <= 39 && this.xp >= (XP_TABLE[this.level + 1] ?? Infinity)) {
+      const prev = this.level;
       this.level++;
+      // level-up (VA 0x1000f898): +2 stat points; +1 skill point when bit 2 of the level changes (not at 7 and 15)
+      this.statPoints = (this.statPoints || 0) + 2;
+      if (((prev ^ this.level) & 4) && this.level !== 7 && this.level !== 15) this.skillPoints = (this.skillPoints || 0) + 1;
+      if (this.def) [[0x4, 0], [0x8, 3], [0x10, 2], [0x20, 1]].forEach(([bit, stat]) => {
+        if (!(this.def.flags & bit)) return;
+        if (this.base[stat] < this.def.caps[stat] * 10) this.base[stat]++; else this.statPoints++;
+      });
       this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this);
       this.hp = this.maxHP; this.energy = this.maxEnergy;
       this.game.floatText(this, 'LEVEL UP');

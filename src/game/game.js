@@ -12,6 +12,8 @@ import { missionScriptFor } from './missions/index.js';
 import './missions/e01m01.js';
 import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
+import { PauseMenu } from './pausemenu.js';
+import { snapshot, writeSave } from './save.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -29,6 +31,7 @@ export class Game {
   }
   async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
     this.missionName = mddName;
+    this.lastSpawn = spawnN;
     const mission = parseMission(await this.assets.bytes(mddName));
     this.mission = mission;
     this.level = await Level.load(this.assets, mission.map);
@@ -47,6 +50,7 @@ export class Game {
     this.notices = [];
     if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
     if (!this.quick) this.quick = await QuickMenu.load(this);
+    if (!this.pause) this.pause = await PauseMenu.load(this);
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && r.name.toLowerCase() === `spawn${spawnN}`) || mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     const keys = partyKeys || this.partyKeys || [heroKey];
@@ -99,6 +103,8 @@ export class Game {
     this.loading = true;
     await this.loadMission(mdd.endsWith('.mdd') ? mdd : mdd + '.mdd', hero, spawnN);
     this.loading = false;
+    writeSave(0, snapshot(this));
+    this.notify('Auto-saved.', 40);
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
   // CompleteEpisode (VA 0x10029d74): store party, advance the episode table, load its map at spawnN
@@ -110,6 +116,7 @@ export class Game {
     this.loading = true;
     await this.loadMission(ep.mdd, keys[0], spawnN, keys);
     this.loading = false;
+    writeSave(0, snapshot(this));
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
   // switch controlled hero to the next living party member (SetActiveHero VA 0x10047c5c)
@@ -159,6 +166,8 @@ export class Game {
       return;
     }
     if (this.loading) { this.input.endFrame(); return; }
+    if (this.pause && this.pause.update(this.input)) { this.input.endFrame(); return; }
+    this.playMs = (this.playMs || 0) + TICK_MS;
     if (this.fadeTarget !== undefined && this.fadeTarget !== null) {
       this.fadeLevel += this.fadeTarget > this.fadeLevel ? 0.1 : -0.1;
       if (Math.abs(this.fadeLevel - this.fadeTarget) < 0.05) { this.fadeLevel = this.fadeTarget; this.fadeTarget = null; if (this.fadeDone) { const d = this.fadeDone; this.fadeDone = null; d(); } }
@@ -204,6 +213,7 @@ export class Game {
     if (this.hud) {
       this.hud.draw(g);
       if (this.quick) this.quick.draw(g);
+      if (this.pause) this.pause.draw(g);
       if (this.fadeLevel > 0) { g.fillStyle = `rgba(0,0,0,${this.fadeLevel})`; g.fillRect(0, 0, SCREEN_W, SCREEN_H); }
       if (this.dialogue) this.dialogue.draw(g);
       (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
