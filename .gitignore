@@ -1,0 +1,7 @@
+# game data is supplied by the user and must never be committed
+*.pkg
+*.app
+*.rar
+assets/
+__pycache__/
+node_modules/

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X-Men Legends Web</title>
+<style>
+  :root { --bg: #0d0e12; --fg: #e6e6e6; --dim: #8b90a0; --acc: #f2c230; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  #screen { width: min(704px, 90vw); aspect-ratio: 176 / 208; image-rendering: pixelated; background: #000; box-shadow: 0 0 0 2px #222; }
+  #setup { text-align: center; }
+  #status { color: var(--dim); min-height: 1.2em; }
+  .keys { color: var(--dim); font-size: 12px; }
+  @media (orientation: landscape) { #screen { height: 85vh; width: auto; } }
+</style>
+</head>
+<body>
+  <canvas id="screen" width="176" height="208"></canvas>
+  <div id="setup"><input type="file" id="file" accept=".pkg"></div>
+  <div id="status"></div>
+  <div class="keys">Move: arrows/WASD · Attack: J/Space · Power: K · Switch: L · Menu: Enter</div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
