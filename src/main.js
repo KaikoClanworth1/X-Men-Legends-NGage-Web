@@ -1,5 +1,6 @@
 import { Assets } from './engine/assets.js';
 import { Input } from './engine/input.js';
+import { installTouchControls } from './engine/touch.js';
 import { Game } from './game/game.js';
 import { FrontEnd } from './game/frontend.js';
 import { audioContext } from './audio/audio.js';
@@ -25,7 +26,9 @@ async function boot(buffer) {
   status('Loading game data…');
   const assets = new Assets(buffer);
   await assets.loadTables();
-  const game = new Game(assets, $('#screen'), new Input());
+  const input = new Input();
+  installTouchControls(input);
+  const game = new Game(assets, $('#screen'), input);
   window.game = game;
   const params = new URLSearchParams(location.search);
   const mission = params.get('mission'), hero = params.get('hero') || 'wolverine';
