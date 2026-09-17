@@ -17,6 +17,7 @@ import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
 import { PauseMenu } from './pausemenu.js';
 import { snapshot, writeSave } from './save.js';
+import { MoviePlayer } from './movie.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -31,6 +32,11 @@ export class Game {
     this.actors = [];
     this.floaters = [];
     this.accum = 0;
+    this.movie = new MoviePlayer(this);
+  }
+  async playMovie(id) {
+    this.loading = true;
+    try { await this.movie.play(id); } finally { this.loading = false; }
   }
   async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
     this.missionName = mddName;
@@ -117,6 +123,7 @@ export class Game {
     const cur = this.episode ?? EPISODES.findIndex(e => e.mdd.slice(0, 3).toLowerCase() === (this.missionName || '').slice(0, 3).toLowerCase());
     this.episode = Math.min(EPISODES.length - 1, Math.max(0, cur) + 1);
     const ep = EPISODES[this.episode];
+    if (this.nextMovie) { const m = this.nextMovie; this.nextMovie = null; await this.playMovie(m); }
     const prevIdx = this.partyKeys.map(k => ['beast', 'colossus', 'cyclops', 'gambit', 'iceman', 'phoenix', 'magma', 'ncrawler', 'rogue', 'storm', 'wolverine'].indexOf(k));
     const keys = partyForEpisode(ep, prevIdx);
     this.loading = true;

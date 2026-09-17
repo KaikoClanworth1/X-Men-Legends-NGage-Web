@@ -28,7 +28,7 @@ export class FrontEnd {
         { label: this.t(3, 'Options'), go: () => this.open('options') },
       ],
       single: [
-        { label: 'New Game', go: () => this.startMission(EPISODES[1].mdd, 1) },
+        { label: 'New Game', go: async () => { this.screen = 'loading'; await this.game.playMovie('mv_01'); this.startMission(EPISODES[1].mdd, 1); } },
         { label: 'Load', go: () => this.open('load') },
         { label: 'Level Select', go: () => this.open('levels') },
       ],
