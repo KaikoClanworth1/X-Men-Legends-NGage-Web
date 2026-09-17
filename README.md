@@ -10,6 +10,9 @@ original executable. File formats are documented in the companion
 
 ## Running
 
+On Windows, double-click `run.bat`: it starts a local server on port 8770 and opens the game in your browser.
+Otherwise:
+
 ```bash
 python -m http.server 8000
 ```
