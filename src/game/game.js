@@ -150,6 +150,7 @@ export class Game {
   }
   update() {
     this.input.pollGamepad();
+    if (this.frontend && this.frontend.active) { this.frontend.update(this.input); this.input.endFrame(); return; }
     if (this.dialogue && this.dialogue.active) {           // conversations pause the world
       this.dialogue.update(this.input);
       this.input.endFrame();
@@ -181,6 +182,7 @@ export class Game {
     const g = this.g;
     g.fillStyle = '#000';
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    if (this.frontend && this.frontend.active) { this.frontend.draw(g); return; }
     if (!this.level) return;
     const p = this.player;
     if (!this.cam) this.updateCamera();

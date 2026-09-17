@@ -1,6 +1,7 @@
 import { Assets } from './engine/assets.js';
 import { Input } from './engine/input.js';
 import { Game } from './game/game.js';
+import { FrontEnd } from './game/frontend.js';
 
 const $ = s => document.querySelector(s);
 const status = t => { $('#status').textContent = t; };
@@ -23,10 +24,14 @@ async function boot(buffer) {
   const game = new Game(assets, $('#screen'), new Input());
   window.game = game;
   const params = new URLSearchParams(location.search);
-  const mission = params.get('mission') || 'e01m01.mdd', hero = params.get('hero') || 'wolverine';
-  status(`Loading ${mission}…`);
-  const party = params.get('party') ? params.get('party').split(',') : [hero, 'cyclops', 'phoenix', 'rogue'].filter((k, i, a) => a.indexOf(k) === i).slice(0, 4);
-  await game.loadMission(mission, hero, 1, party);
+  const mission = params.get('mission'), hero = params.get('hero') || 'wolverine';
+  if (mission) {                              // dev shortcut: jump straight into a mission
+    status(`Loading ${mission}…`);
+    const party = params.get('party') ? params.get('party').split(',') : [hero, 'cyclops', 'phoenix', 'rogue'].filter((k, i, a) => a.indexOf(k) === i).slice(0, 4);
+    await game.loadMission(mission, hero, 1, party);
+  } else {
+    game.frontend = await FrontEnd.load(game);
+  }
   $('#setup').hidden = true;
   status('');
   game.start();
