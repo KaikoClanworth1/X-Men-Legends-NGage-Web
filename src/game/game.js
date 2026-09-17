@@ -3,6 +3,7 @@ import { parseMission } from '../formats/map.js';
 import { Character, TICK_MS, S } from './character.js';
 import { Hud } from './hud.js';
 import { Particles } from '../engine/particles.js';
+import { Breakables } from './breakables.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -28,6 +29,9 @@ export class Game {
     if (!this.hud) this.hud = await Hud.load(this);
     if (!this.particles) this.particles = await Particles.load(this.assets);
     this.particles.active = [];
+    if (!this.breakables) this.breakables = await Breakables.load(this);
+    this.breakables.attach(this.level);
+    this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
     this.player.team = 0;
@@ -71,6 +75,8 @@ export class Game {
     this.floaters = this.floaters.filter(f => f.life > 0);
     if (this.hud) this.hud.update();
     if (this.particles) this.particles.update(TICK_MS);
+    this.time += TICK_MS;
+    if (this.breakables) this.breakables.update();
     this.updateCamera();
     this.level.tick++;
     this.input.endFrame();

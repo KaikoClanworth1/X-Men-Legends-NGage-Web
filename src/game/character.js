@@ -84,6 +84,7 @@ export class Character {
     const hit = target && this.distTo(target) <= this.reach + target.radius ? target
       : this.game.actors.find(a => a !== this && a.alive && this.isEnemyOf(a) && Math.hypot(a.x - (this.x + dx * this.reach / 2), a.y - (this.y + dy * this.reach / 2)) <= this.reach);
     if (hit) this.resolveMelee(hit);
+    else if (this.isHero && this.game.breakables) this.game.breakables.tryHit(this, this.reach);
     this.play(this.def ? this.def.attackAnim : ANIM.m01, true);
   }
   resolveMelee(def) {

@@ -71,10 +71,13 @@ export class Level {
         list.sort((a, b) => (a.x + a.y) - (b.x + b.y));
         for (const o of list) {
           if (o.draw) { o.draw(g, camX, camY); continue; }
-          const spr = this.objectSprites[o.sprite], f = spr && spr.frames[o.frame];
+          const spr = this.objectSprites[o.sprite], f = o.hidden ? o.debrisFrame : spr && spr.frames[o.frame];
           if (!f) continue;
           const [sx, sy] = worldToScreen(o.x, o.y, o.z);
-          g.drawImage(f.canvas, Math.round(sx + o.dx - f.hx - camX), Math.round(sy + o.dy - f.hy - camY));
+          const flash = o.breakable && o.breakable.flash & 1;
+          if (flash) { g.save(); g.filter = 'brightness(2.2)'; }
+          g.drawImage(f.canvas, Math.round(sx + (o.hidden ? 0 : o.dx) - f.hx - camX), Math.round(sy + (o.hidden ? 0 : o.dy) - f.hy - camY));
+          if (flash) g.restore();
         }
       }
   }
