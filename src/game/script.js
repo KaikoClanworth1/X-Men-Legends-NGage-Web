@@ -101,6 +101,8 @@ export class MissionScript {
   setNeutral(name) { for (const a of this.matching(name)) { a.team = 2; a.target = null; } }
   setUnkillable(name, on = true) { for (const a of this.matching(name)) a.unkillable = on; }
   setLevel(name, level) { for (const a of this.matching(name)) a.setLevel(level); }
+  walkToTile(name, tx, ty) { const a = this.find(name); return a ? a.walkToTile(tx, ty).then(() => this.rt.fire(name, 5, { character: a })) : Promise.resolve(); }
+  kill(name) { for (const a of this.matching(name)) { a.unkillable = false; if (a.alive) a.die(null); } }
   teleport(name, x, y) { const a = this.find(name); if (a) { a.x = x; a.y = y; } }
   matching(name) { const n = name.toLowerCase(); return this.game.actors.filter(a => (a.name || '').toLowerCase() === n || a.key.toLowerCase() === n); }
   // conversation / text

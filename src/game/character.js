@@ -54,6 +54,9 @@ export class Character {
     return c;
   }
   stat(i) { return this.base[i] + this.bonus[i]; }
+  walkToTile(tx, ty) {
+    return new Promise(done => { this.scriptWalk = { x: tx * 100 + 50, y: ty * 100 + 50, done }; });
+  }
   setLevel(n) { this.level = n; this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this); this.hp = this.maxHP; this.energy = this.maxEnergy; }
   taken(el) { return this.def ? this.def.taken[el] : 100; }
   bonusFlat(el) { return this.def ? this.def.flat[el] : 0; }
@@ -195,6 +198,13 @@ export class Character {
     }
     if (isDisabled(this)) { this.play(ANIM.i01); this.advanceAnim(); return; }
 
+    if (this.scriptWalk) {                           // WalkToTile (VA 0x1002a220): walk to the tile centre, then event 5
+      const w = this.scriptWalk, dx = w.x - this.x, dy = w.y - this.y;
+      if (Math.hypot(dx, dy) <= 40) { this.scriptWalk = null; this.state = S.IDLE; this.play(ANIM.i01); w.done(); }
+      else { this.state = S.WALK; this.moveTowardFree(dx, dy); }
+      this.advanceAnim();
+      return;
+    }
     if (this === this.game.player) this.updatePlayer(level, move);
     else if (this.team === 1) this.updateEnemyAI(level);
     else if (this.team === 0 && this.isHero) this.updateTeammateAI(level);
