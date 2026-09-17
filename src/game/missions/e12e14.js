@@ -122,6 +122,21 @@ export class E14M05 extends BaseMission {
   }
 }
 
+// Muir Isle cutscene (docs/specs/missions/e12cMI.md): hand the findings to Moira, she walks to Illyana's bed, episode ends
+export class E12CMI extends BaseMission {
+  async start() {
+    if (!once(this, 'started')) return;
+    this.setControl(false);
+    await this.dialogue('mission12', 'Illyana-1');
+    await this.walkToTile('moira', 5, 0x28);
+    await this.dialogue('mission12', 'Illyana-2');
+    await this.fadeOut();
+    this.setControl(true);
+    this.completeEpisode(1);
+  }
+}
+
+registerMission('e12cmi', E12CMI);
 registerMission('e12m18', E12M18);
 registerMission('e12m19', E12M19);
 registerMission('e12m20', E12M20);

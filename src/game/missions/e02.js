@@ -98,6 +98,38 @@ export class E02M05 extends BaseMission {
   }
 }
 
+// Episode 2, mansion grounds (docs/specs/missions/e02m11.md): talk to Iceman / Storm / students, doors lead back inside
+export class E02M11 extends BaseMission {
+  init() {
+    super.init();
+    this.containerLoot = ['smelling salts', 'healing dose', 'concussion bomb', 'small med pack'];
+    this.containerCap = 9; this.containerGuaranteed = true;
+    onAction(this, ['door1', 'door2', 'trigger2', 'door3', 'door4'], async () => {
+      if (this.leaving) return;
+      this.leaving = true;
+      await this.fadeOut();
+      this.changeLevel('e02m03', 1);
+    });
+    // talking again cycles "-1", "-2", then "-n"
+    this.talks = {};
+    const talk = who => this.rt.on(who, async e => {
+      if (e.code !== EVT.ACTION || this.busy) return;
+      this.busy = true;
+      const n = this.talks[who] = (this.talks[who] || 0) + 1;
+      await this.dialogue('mission02', `${who}-${n <= 2 ? n : 'n'}`);
+      this.busy = false;
+    });
+    talk('iceman'); talk('storm');
+    this.rt.on(range('student', 4), async e => {
+      if (e.code !== EVT.ACTION || this.busy) return;
+      this.busy = true;
+      await this.dialogue('generic', `Student-2-${Math.floor(Math.random() * 10)}`);
+      this.busy = false;
+    });
+  }
+}
+
 registerMission('e02m03', E02M03);
+registerMission('e02m11', E02M11);
 registerMission('e02m04', E02M04);
 registerMission('e02m05', E02M05);
