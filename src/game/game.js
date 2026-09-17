@@ -4,6 +4,7 @@ import { Character, TICK_MS, S } from './character.js';
 import { Hud } from './hud.js';
 import { Particles } from '../engine/particles.js';
 import { Breakables } from './breakables.js';
+import { Pickups, Inventory } from './pickups.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -31,6 +32,11 @@ export class Game {
     this.particles.active = [];
     if (!this.breakables) this.breakables = await Breakables.load(this);
     this.breakables.attach(this.level);
+    this.pickups = new Pickups(this);
+    if (!this.inventory) this.inventory = new Inventory();
+    if (!this.itemIcons) this.itemIcons = await this.assets.sprite('items.spr');
+    if (!this.itemNames) { this.itemNames = await this.assets.text('items.txt'); this.abilityNames = await this.assets.text('abilities.txt'); }
+    this.notices = [];
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
@@ -43,6 +49,10 @@ export class Game {
       this.actors.push(npc);
     }
   }
+  itemName(item) {
+    return (item.level ? this.abilityNames : this.itemNames)[item.stringIndex] || item.name;
+  }
+  notify(text, life = 60) { this.notices.unshift({ text, life }); this.notices.length = Math.min(this.notices.length, 3); }
   floatText(actor, text) {
     if (/^\d+$/.test(text) && this.hud) { this.hud.damage(actor, text); return; }
     this.floaters.push({ x: actor.x, y: actor.y, z: 90, text, life: 18 });
@@ -77,6 +87,9 @@ export class Game {
     if (this.particles) this.particles.update(TICK_MS);
     this.time += TICK_MS;
     if (this.breakables) this.breakables.update();
+    if (this.pickups) this.pickups.update();
+    for (const n of this.notices || []) n.life--;
+    if (this.notices) this.notices = this.notices.filter(n => n.life > 0);
     this.updateCamera();
     this.level.tick++;
     this.input.endFrame();
@@ -90,7 +103,7 @@ export class Game {
     if (!this.cam) this.updateCamera();
     let camX = this.cam[0] - SCREEN_W / 2, camY = this.cam[1] - SCREEN_H / 2;
     if (this.shake && performance.now() < this.shake.until) { camX += randShake(this.shake.strength); camY += randShake(this.shake.strength); }
-    this.level.draw(g, camX, camY, SCREEN_W, SCREEN_H, this.actors.filter(a => a.state !== S.DEAD));
+    this.level.draw(g, camX, camY, SCREEN_W, SCREEN_H, [...this.actors.filter(a => a.state !== S.DEAD), ...(this.pickups ? this.pickups.list : [])]);
     if (this.particles) this.particles.draw(g, camX, camY);
     g.font = '7px monospace';
     g.textAlign = 'center';
@@ -99,7 +112,10 @@ export class Game {
       g.fillStyle = '#000'; g.fillText(f.text, sx - camX + 1, sy - camY + 1);
       g.fillStyle = '#ffd84a'; g.fillText(f.text, sx - camX, sy - camY);
     }
-    if (this.hud) this.hud.draw(g);
+    if (this.hud) {
+      this.hud.draw(g);
+      (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
+    }
     if (!p.alive) { g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = '10px monospace'; g.fillText('DEFEATED', SCREEN_W / 2, SCREEN_H / 2); }
   }
   start() {

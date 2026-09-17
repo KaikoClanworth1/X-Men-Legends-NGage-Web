@@ -165,7 +165,11 @@ export class Character {
 
     if (this.state === S.DIE) {
       this.advanceAnim();
-      if (this.animDone && --this.busy <= 0) this.state = this.isHero ? S.DIE : S.DEAD;
+      if (this.animDone && --this.busy <= 0) {
+        this.state = this.isHero ? S.DIE : S.DEAD;
+        // pre-rolled drop spawns when the death animation ends (VA 0x100085f8)
+        if (this.state === S.DEAD && this.dropItem && this.game.pickups) this.game.pickups.spawn(this.dropItem, this.x, this.y);
+      }
       return;
     }
     if (this.state === S.DEAD) return;
