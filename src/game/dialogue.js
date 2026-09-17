@@ -28,7 +28,9 @@ export class Dialogue {
   }
   // start a conversation; resolves with the end result code
   async start(fileName, label) {
+    const gen = this.game.loadGen;
     const dlg = await this.file(fileName);
+    if (gen !== this.game.loadGen) return new Promise(() => {});   // the level changed while loading
     if (!dlg) return -1;
     const start = dlg.labels.get(label.toLowerCase());
     if (start === undefined) return -1;

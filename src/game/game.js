@@ -36,6 +36,9 @@ import { Sfx } from '../audio/sfx.js';
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
 
+// in-progress guards (a conversation or fade was running) must not be restored
+const TRANSIENT = new Set(['busy', 'talking', 'hinting', 'leaving', 'ending', 'inXavierScene']);
+
 export class Game {
   constructor(assets, canvas, input) {
     this.assets = assets;
@@ -55,10 +58,11 @@ export class Game {
     this.music.stop();
     try { await this.movie.play(id); } finally { this.loading = false; this.updateMusic(true); }
   }
-  async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
+  async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null, state = null) {
     // keep hero progress (level, XP, stats, points, powers, equipment) across map changes
     this.heroProgress ||= new Map();
     for (const a of (this.actors || [])) if (a.inParty) this.heroProgress.set(a.key, a.progress());
+    this.loadGen = (this.loadGen || 0) + 1;
     if (this.script) this.script.dead = true;           // halt the previous level's script
     if (this.dialogue && this.dialogue.active) { this.dialogue.active = null; this.voice.stop(); }
     if (this.fadeDone) this.fadeDone = null;
@@ -115,7 +119,45 @@ export class Game {
     const Cls = missionScriptFor(mddName);
     this.missionScript = new Cls(this, this.script);
     this.missionScript.init();
+    if (state) { await this.applyLevelState(state); return; }   // resuming a save: the intro already ran
     Promise.resolve().then(() => this.missionScript.start()).catch(e => console.error('mission start', e));
+  }
+  // Mission progress for save games: script flags, placed/spawned characters, zones and the party's positions
+  captureLevelState() {
+    const flags = {};
+    for (const [k, v] of Object.entries(this.missionScript || {})) {
+      if (k === 'game' || k === 'rt' || TRANSIENT.has(k)) continue;
+      if (['boolean', 'number', 'string'].includes(typeof v)) flags[k] = v;
+      else if (v instanceof Set && [...v].every(x => typeof x !== 'object')) flags[k] = { set: [...v] };
+      else if (Array.isArray(v) && v.every(x => x === null || typeof x !== 'object')) flags[k] = { arr: v };
+      else if (v && v.constructor === Object && Object.values(v).every(x => x === null || typeof x !== 'object')) flags[k] = { obj: v };
+    }
+    const actors = this.actors.filter(a => !a.inParty).map(a => ({ name: a.name, key: a.key, x: Math.round(a.x), y: Math.round(a.y), hp: a.hp, alive: a.alive, team: a.team, unkillable: !!a.unkillable, follower: !!a.follower }));
+    const zones = this.script ? this.script.zones.map(z => [z.enabled ? 1 : 0, z.triggers]) : [];
+    const party = this.party().map(a => ({ key: a.key, x: Math.round(a.x), y: Math.round(a.y), hp: a.hp, energy: a.energy }));
+    return { flags, actors, zones, party };
+  }
+  async applyLevelState(state) {
+    const ms = this.missionScript;
+    for (const [k, v] of Object.entries(state.flags || {})) ms[k] = v && v.set ? new Set(v.set) : v && v.arr ? v.arr.slice() : v && v.obj ? { ...v.obj } : v;
+    const saved = state.actors || [];
+    for (const a of this.actors.filter(a => !a.inParty)) {
+      const s = saved.find(x => x.name === a.name && x.key === a.key && !x.used);
+      if (!s) { this.removeActor(a); continue; }
+      s.used = true;
+      Object.assign(a, { x: s.x, y: s.y, team: s.team, unkillable: s.unkillable, follower: s.follower });
+      if (!s.alive) this.removeActor(a); else a.hp = Math.max(1, Math.min(a.maxHP, s.hp));
+    }
+    for (const s of saved.filter(x => !x.used && x.alive)) {   // characters the script spawned
+      const c = await this.spawnCharacter(s.key, s.x, s.y, s.name);
+      Object.assign(c, { team: s.team, unkillable: s.unkillable, follower: s.follower });
+    }
+    (state.zones || []).forEach(([on, n], i) => { const z = this.script.zones[i]; if (z) { z.enabled = !!on; z.triggers = n; } });
+    for (const p of state.party || []) {
+      const a = this.party().find(x => x.key === p.key);
+      if (a) Object.assign(a, { x: p.x, y: p.y, hp: Math.max(1, Math.min(a.maxHP, p.hp)), energy: Math.min(a.maxEnergy, p.energy) });
+    }
+    this.cam = null; this.camK = 0x1000;
   }
   async spawnCharacter(key, x, y, name) {
     const c = await Character.create(this, key, x, y);
@@ -210,7 +252,7 @@ export class Game {
     const hero = this.player ? this.player.key : 'wolverine';
     this.loading = true;
     try { await this.loadMission(mdd.endsWith('.mdd') ? mdd : mdd + '.mdd', hero, spawnN); } finally { this.loading = false; }
-    writeSave(0, snapshot(this));
+    writeSave(0, snapshot(this, { level: false }));   // autosave at the entrance: the level starts fresh
     this.notify('Auto-saved.', 40);
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
@@ -225,7 +267,7 @@ export class Game {
     const keys = partyForEpisode(ep, prevIdx, [...(this.unlocked || [])]);
     this.loading = true;
     try { await this.loadMission(ep.mdd, keys[0], spawnN, keys); } finally { this.loading = false; }
-    writeSave(0, snapshot(this));
+    writeSave(0, snapshot(this, { level: false }));   // autosave at the entrance: the level starts fresh
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
   // switch controlled hero to the next living party member (SetActiveHero VA 0x10047c5c)

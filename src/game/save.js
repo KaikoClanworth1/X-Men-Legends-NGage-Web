@@ -3,7 +3,7 @@
 const KEY = n => `xml-web-save-${n}`;
 export const SLOTS = ['Autosave', 'Game1', 'Game2', 'Game3', 'Game4'];
 
-export function snapshot(game) {
+export function snapshot(game, { level = true } = {}) {
   return {
     version: 1,
     time: Date.now(),
@@ -20,7 +20,7 @@ export function snapshot(game) {
     episodeVars: game.episodeVars || {},
     formation: game.formation || 0,
     stance: game.stance ?? 2,
-    vars: game.missionScript && game.missionScript.saveVars ? game.missionScript.saveVars() : {},
+    level: level && game.missionScript ? game.captureLevelState() : null,
   };
 }
 
@@ -56,7 +56,7 @@ export async function restore(game, data) {
   game.formation = data.formation || 0;
   game.stance = data.stance ?? 2;
   game.loading = true;
-  await game.loadMission(data.mission, leader, data.spawn || 1, [leader, ...keys.filter(k => k !== leader)], data.vars);
+  await game.loadMission(data.mission, leader, data.spawn || 1, [leader, ...keys.filter(k => k !== leader)], data.level || null);
   game.loading = false;
   game.fadeLevel = 1; game.fadeTarget = 0;
 }
