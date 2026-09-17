@@ -5,6 +5,8 @@ import { Hud } from './hud.js';
 import { Particles } from '../engine/particles.js';
 import { Breakables } from './breakables.js';
 import { Pickups, Inventory } from './pickups.js';
+import { Dialogue } from './dialogue.js';
+import { Voice } from '../audio/audio.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -37,6 +39,7 @@ export class Game {
     if (!this.itemIcons) this.itemIcons = await this.assets.sprite('items.spr');
     if (!this.itemNames) { this.itemNames = await this.assets.text('items.txt'); this.abilityNames = await this.assets.text('abilities.txt'); }
     this.notices = [];
+    if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
@@ -79,6 +82,11 @@ export class Game {
   }
   update() {
     this.input.pollGamepad();
+    if (this.dialogue && this.dialogue.active) {           // conversations pause the world
+      this.dialogue.update(this.input);
+      this.input.endFrame();
+      return;
+    }
     const move = this.readMove();
     for (const a of this.actors) a.update(this.level, a === this.player ? move : null);
     for (const f of this.floaters) { f.life--; f.z += 3; }
@@ -114,6 +122,7 @@ export class Game {
     }
     if (this.hud) {
       this.hud.draw(g);
+      if (this.dialogue) this.dialogue.draw(g);
       (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
     }
     if (!p.alive) { g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = '10px monospace'; g.fillText('DEFEATED', SCREEN_W / 2, SCREEN_H / 2); }
