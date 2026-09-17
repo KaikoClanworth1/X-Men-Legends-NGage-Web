@@ -19,7 +19,7 @@ export class PauseMenu {
   }
   get active() { return this.screen !== null; }
   open() { this.screen = 'main'; this.cursor = 0; this.game.sfx.menu('accept'); }
-  close() { this.screen = null; }
+  close() { this.screen = null; this.fromHotkey = false; }
   go(screen) { this.screen = screen; this.cursor = 0; }
   fonts() { return this.game.frontend ? this.game.frontend.fonts : this.game.hud.fonts; }
   hero() { const party = this.game.party(); return party[this.heroIndex % Math.max(1, party.length)] || this.game.player; }
@@ -151,7 +151,7 @@ export class PauseMenu {
         g.sfx.menu('accept');
       }
     }
-    if (input.wasPressed('back') || input.wasPressed('menu')) { g.sfx.menu('back'); this.go('main'); }
+    if (input.wasPressed('back') || input.wasPressed('menu')) { g.sfx.menu('back'); if (this.fromHotkey) this.close(); else this.go('main'); }
   }
 
   draw(g) {
@@ -167,7 +167,7 @@ export class PauseMenu {
     items.slice(top, top + 7).forEach((it, k) => {
       const i = top + k, row = this.selector && this.selector.frames[i === this.cursor ? 0 : 1];
       if (row) g.drawImage(row.canvas, 0, 49 + 21 * k);
-      (this.screen === 'main' ? F.menu : F.small7).draw(g, it.label, 9, 53 + 21 * k);
+      (this.screen === 'main' ? F.menu || F.arial : F.small7).draw(g, it.label, 9, 53 + 21 * k);
     });
     if (['skills', 'equip'].includes(this.screen)) F.arial.draw(g, '< hero >', 88, 196, { align: 'center' });
   }

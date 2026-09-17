@@ -18,6 +18,8 @@ export function snapshot(game) {
     objectives: game.objectiveList || [],
     unlocked: [...(game.unlocked || [])],
     episodeVars: game.episodeVars || {},
+    formation: game.formation || 0,
+    stance: game.stance ?? 2,
     vars: game.missionScript && game.missionScript.saveVars ? game.missionScript.saveVars() : {},
   };
 }
@@ -51,6 +53,8 @@ export async function restore(game, data) {
   }]));
   game.unlocked = new Set(data.unlocked || []);
   game.episodeVars = data.episodeVars || {};
+  game.formation = data.formation || 0;
+  game.stance = data.stance ?? 2;
   game.loading = true;
   await game.loadMission(data.mission, leader, data.spawn || 1, [leader, ...keys.filter(k => k !== leader)], data.vars);
   game.loading = false;

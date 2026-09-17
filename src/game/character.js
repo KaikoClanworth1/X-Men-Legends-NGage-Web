@@ -3,6 +3,7 @@ import { worldToScreen } from '../engine/level.js';
 import { moveWithCollision, resolveMove } from '../engine/collision.js';
 import { maxHP, maxEnergy, rollMelee, meleeDamage, knockback, isDisabled, randInt, killXP, XP_TABLE } from './combat.js';
 import { availablePowers, castPower, resolvePower } from './powers.js';
+import { formationOffset, STANCES } from './overlays.js';
 
 export const TICK_MS = 40;          // fixed 40 ms game tick (CPeriodic, docs/specs/core.md)
 
@@ -314,9 +315,9 @@ export class Character {
   }
   // AI teammates: attack enemies near the leader, otherwise follow; they ignore walls (collision mode 1, docs/specs/core.md)
   updateTeammateAI(level) {
-    const leader = this.game.player;
-    if (this.target && (!this.target.alive || !this.isEnemyOf(this.target) || this.target.distTo(leader) > 700)) this.target = null;
-    if (!this.target && --this.scanTimer <= 0) { this.scanTimer = 9; this.target = leader.nearestEnemy(500); }
+    const leader = this.game.player, stance = STANCES[this.game.stance ?? 2];
+    if (this.target && (!this.target.alive || !this.isEnemyOf(this.target) || this.target.distTo(leader) > stance.leash)) this.target = null;
+    if (!this.target && --this.scanTimer <= 0) { this.scanTimer = 9; this.target = leader.nearestEnemy(stance.scan); }
     const t = this.target;
     if (t) {
       const d = this.distTo(t);
@@ -326,8 +327,10 @@ export class Character {
       } else { this.state = S.RUN; this.moveTowardFree(t.x - this.x, t.y - this.y); }
       return;
     }
-    const d = this.distTo(leader);
-    if (d > 180) { this.state = S.RUN; this.moveTowardFree(leader.x - this.x, leader.y - this.y); }
+    // hold the formation slot around the leader
+    const [ox, oy] = formationOffset(this.game, this);
+    const tx = leader.x + ox - this.x, ty = leader.y + oy - this.y;
+    if (Math.hypot(tx, ty) > (this.state === S.RUN ? 40 : 120)) { this.state = S.RUN; this.moveTowardFree(tx, ty); }
     else { this.state = S.IDLE; this.play(ANIM.i01); }
   }
   moveTowardFree(vx, vy) {

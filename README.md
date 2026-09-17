@@ -8,6 +8,14 @@ The game's content is **not** part of this repository. The engine reads the play
 original executable. File formats are documented in the companion
 [asset viewer repo](https://github.com/KaikoClanworth1/X-Men-Legends-NGage-Asset-Viewer/blob/main/FORMATS.md).
 
+## Screenshots
+
+| | | |
+|---|---|---|
+| ![Title](docs/screenshots/title.png) | ![Main menu](docs/screenshots/mainmenu.png) | ![Dialogue](docs/screenshots/dialogue.png) |
+| ![Combat](docs/screenshots/combat.png) | ![Weapon X facility](docs/screenshots/level2.png) | ![Pause menu](docs/screenshots/pause.png) |
+| ![Skills](docs/screenshots/skills.png) | ![Formation select](docs/screenshots/formation.png) | ![Map](docs/screenshots/map.png) |
+
 ## Running
 
 On Windows, double-click `run.bat`: it starts a local server on port 8770 and opens the game in your browser.
@@ -19,7 +27,7 @@ python -m http.server 8000
 Open <http://localhost:8000/> and choose your `assets.pkg`. It is remembered in the browser's IndexedDB, and you can
 also drop it next to `index.html`, where it is git-ignored. Dev URL parameters: `?mission=e01m01.mdd&hero=wolverine`.
 
-Controls: arrows/WASD move · J/Space attack (N-Gage 5) · K power (7) · L switch hero (9) · Enter menu · gamepad supported.
+Controls: arrows/WASD move · J/Space attack (N-Gage 5) · K power (7) · U specials (4) · I items (6) · L/Tab switch hero (8) · O formation (2) · 9 objectives · 0 stats · M map (3) · Enter menu · gamepad and touch supported.
 
 ## Layout
 

@@ -26,6 +26,7 @@ import './missions/e22e25.js';
 import './missions/tutorial.js';
 import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
+import { Overlays } from './overlays.js';
 import { PauseMenu } from './pausemenu.js';
 import { snapshot, writeSave } from './save.js';
 import { MoviePlayer } from './movie.js';
@@ -78,6 +79,7 @@ export class Game {
     this.notices = [];
     if (!this.dialogue) { this.dialogue = await Dialogue.load(this); this.voice = new Voice(this.assets); }
     if (!this.quick) this.quick = await QuickMenu.load(this);
+    if (!this.overlays) this.overlays = new Overlays(this);
     if (!this.pause) this.pause = await PauseMenu.load(this);
     this.time = 0;
     const spawn = mission.records.find(r => r.type === 4 && r.name.toLowerCase() === `spawn${spawnN}`) || mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
@@ -251,6 +253,7 @@ export class Game {
     if (this.loading) { this.input.endFrame(); return; }
     if (this.gameOver) { this.updateGameOver(); this.input.endFrame(); return; }
     if (this.pause && this.pause.update(this.input)) { this.input.endFrame(); return; }
+    if (this.overlays && this.overlays.update(this.input)) { this.input.endFrame(); return; }
     this.playMs = (this.playMs || 0) + TICK_MS;
     if (this.fadeTarget !== undefined && this.fadeTarget !== null) {
       this.fadeLevel += this.fadeTarget > this.fadeLevel ? 0.1 : -0.1;
@@ -300,10 +303,11 @@ export class Game {
     if (this.hud) {
       this.hud.draw(g);
       if (this.quick) this.quick.draw(g);
+      if (this.overlays) this.overlays.draw(g);
       if (this.pause) this.pause.draw(g);
       if (this.fadeLevel > 0) { g.fillStyle = `rgba(0,0,0,${this.fadeLevel})`; g.fillRect(0, 0, SCREEN_W, SCREEN_H); }
       if (this.dialogue) this.dialogue.draw(g);
-      (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
+      if (!(this.overlays && this.overlays.active) && !(this.pause && this.pause.active)) (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
     }
     if (this.gameOver) this.drawGameOver(g);
   }
