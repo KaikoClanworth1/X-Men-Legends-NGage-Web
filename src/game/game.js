@@ -29,6 +29,7 @@ import { PauseMenu } from './pausemenu.js';
 import { snapshot, writeSave } from './save.js';
 import { MoviePlayer } from './movie.js';
 import { Music, trackForMap } from '../audio/music.js';
+import { Sfx } from '../audio/sfx.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -45,6 +46,7 @@ export class Game {
     this.accum = 0;
     this.movie = new MoviePlayer(this);
     this.music = new Music(assets);
+    this.sfx = new Sfx(assets);
   }
   async playMovie(id) {
     this.loading = true;
@@ -92,6 +94,7 @@ export class Game {
       this.actors.push(npc);
     }
     this.playerControl = true;
+    this.gameOver = null;
     this.fadeLevel = 0;
     this.objectiveList = this.objectiveList || [];
     if (!this.objectiveText) { this.objectiveText = await this.assets.text('objectives.txt'); this.scriptText = await this.assets.text('scripts.txt'); }
@@ -109,6 +112,44 @@ export class Game {
     return c;
   }
   unlockHeroes(keys) { this.unlocked = new Set([...(this.unlocked || []), ...keys]); }
+  // Party knock-outs (docs/specs/combat.md §2): switch to a standing hero; all down -> game over (menus 116-119)
+  checkParty() {
+    if (this.gameOver || !this.player) return;
+    const standing = this.party().filter(a => a.alive);
+    if (!this.player.alive && standing.length) { this.player = standing[0]; this.lead = null; }
+    if (!standing.length && this.party().length) { this.gameOver = { cursor: 0, timer: 25 }; this.music.stop(); this.sfx.play('retry.swb', 'retry'); }
+  }
+  updateGameOver() {
+    const go = this.gameOver, i = this.input;
+    if (go.timer > 0) { go.timer--; return; }
+    if (i.wasPressed('up') || i.wasPressed('down')) { go.cursor ^= 1; this.sfx.menu('scroll'); }
+    if (i.wasPressed('attack') || i.wasPressed('menu')) {
+      this.sfx.menu('accept');
+      const choice = go.cursor;
+      this.gameOver = null;
+      if (choice === 0) this.retry();
+      else if (this.frontend) { this.frontend.screen = 'main'; this.frontend.stack = []; }
+      else location.reload();
+    }
+  }
+  async retry() {
+    const keys = this.partyKeys.slice();
+    this.loading = true;
+    await this.loadMission(this.missionName, keys[0], this.lastSpawn || 1, keys);
+    this.loading = false;
+    this.fadeLevel = 1; this.fadeTarget = 0;
+  }
+  drawGameOver(g) {
+    const go = this.gameOver, f = this.hud.fonts;
+    g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    const menus = this.frontend ? this.frontend.text : null, t = (i, d) => (menus && menus[i]) || d;
+    f.arial.draw(g, t(116, 'All X-Men have'), 88, 70, { align: 'center' });
+    f.arial.draw(g, t(117, 'been eliminated.'), 88, 82, { align: 'center' });
+    [t(118, 'Retry'), t(119, 'Main Menu')].forEach((label, k) => {
+      if (k === go.cursor) { g.fillStyle = 'rgba(0,60,190,0.85)'; g.fillRect(40, 111 + k * 18, 96, 14); }
+      f.arial.draw(g, label, 88, 113 + k * 18, { align: 'center' });
+    });
+  }
   // location loop, or the boss loop while a hostile unkillable boss is close to the leader
   updateMusic(force = false) {
     if (!force && (this.musicTick = (this.musicTick || 0) + 1) % 25) return;
@@ -202,6 +243,7 @@ export class Game {
       return;
     }
     if (this.loading) { this.input.endFrame(); return; }
+    if (this.gameOver) { this.updateGameOver(); this.input.endFrame(); return; }
     if (this.pause && this.pause.update(this.input)) { this.input.endFrame(); return; }
     this.playMs = (this.playMs || 0) + TICK_MS;
     if (this.fadeTarget !== undefined && this.fadeTarget !== null) {
@@ -223,6 +265,7 @@ export class Game {
     if (this.pickups) this.pickups.update();
     for (const n of this.notices || []) n.life--;
     if (this.notices) this.notices = this.notices.filter(n => n.life > 0);
+    this.checkParty();
     this.updateCamera();
     this.updateMusic();
     this.level.tick++;
@@ -255,7 +298,7 @@ export class Game {
       if (this.dialogue) this.dialogue.draw(g);
       (this.notices || []).forEach((n, i) => this.hud.fonts.arial.draw(g, n.text, SCREEN_W / 2, 150 - i * 11, { align: 'center', alpha: Math.min(1, n.life / 10) }));
     }
-    if (!p.alive) { g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = '10px monospace'; g.fillText('DEFEATED', SCREEN_W / 2, SCREEN_H / 2); }
+    if (this.gameOver) this.drawGameOver(g);
   }
   start() {
     let last = performance.now();

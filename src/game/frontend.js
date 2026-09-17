@@ -61,12 +61,12 @@ export class FrontEnd {
     }
     if (this.screen === 'loading') return;
     const items = this.menus()[this.screen] || [];
-    if (input.wasPressed('up')) this.cursor = (this.cursor + items.length - 1) % items.length;
-    if (input.wasPressed('down')) this.cursor = (this.cursor + 1) % items.length;
+    if (input.wasPressed('up')) { this.cursor = (this.cursor + items.length - 1) % items.length; this.game.sfx.menu('scroll'); }
+    if (input.wasPressed('down')) { this.cursor = (this.cursor + 1) % items.length; this.game.sfx.menu('scroll'); }
     if (this.cursor < this.scroll) this.scroll = this.cursor;
     if (this.cursor >= this.scroll + 7) this.scroll = this.cursor - 6;
-    if (input.wasPressed('attack') || input.wasPressed('menu')) { const it = items[this.cursor]; if (it) it.go(); }
-    if (input.wasPressed('back')) this.back();
+    if (input.wasPressed('attack') || input.wasPressed('menu')) { const it = items[this.cursor]; if (it) { this.game.sfx.menu('accept'); it.go(); } }
+    if (input.wasPressed('back')) { this.game.sfx.menu('back'); this.back(); }
   }
   draw(g) {
     g.fillStyle = '#000';

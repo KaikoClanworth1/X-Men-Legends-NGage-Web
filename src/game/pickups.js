@@ -25,6 +25,7 @@ class Pickup {
       if (Math.abs(a.x - 20 - this.x) <= 50 && Math.abs(a.y - 20 - this.y) <= 50) {
         if (this.game.inventory.add(this.item)) {
           this.gone = true;
+          this.game.sfx.pickup();
           this.game.notify(this.game.itemName(this.item));
           if (this.game.script) this.game.script.fire(a.name || a.key, 7, { item: this.item, character: a });
         }

@@ -36,8 +36,12 @@ export class QuickMenu {
     return [];
   }
   useItem(item) {
-    const g = this.game, p = g.player;
+    const g = this.game;
+    const downed = g.party().find(a => !a.alive);
+    if ((item.cls & 4) && !downed) { g.notify('No one to revive', 40); return; }
     if (!g.inventory.remove(item)) return;
+    if (item.cls & 4) { downed.revive(0.5); g.notify(g.itemName(item), 40); return; }
+    const p = g.player;
     if (item.healTick > 0) p.hp = Math.min(p.maxHP, p.hp + item.healTick);
     if (item.energyTick > 0) p.energy = Math.min(p.maxEnergy, p.energy + item.energyTick);
     if (item.cure) for (const [name, bit] of Object.entries({ charm: 1, blind: 2, stun: 4, sleep: 8, confuse: 16, freeze: 32, burn: 64, poison: 128 })) if (item.cure & bit) p.statusTimers[name] = 0;

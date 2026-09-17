@@ -39,6 +39,7 @@ export function castPower(caster, power, target) {
   caster.energy -= item.cost;                                         // subtracted at cast (VA 0x100053cc)
   if (target) caster.face(target);
   caster.play(slot.anim, true);
+  game.sfx.power(caster);
   const P = game.particles;
   if (P && item.fxCast > 0) P.spawn(item.fxCast, caster.x, caster.y, 0, caster.facing);
   if (P && item.fxCaster > 0 && !(item.cls & 0x10)) P.spawn(item.fxCaster, caster.x, caster.y, 0, caster.facing);

@@ -48,12 +48,14 @@ export class Breakables {
   hit(o, attacker) {
     const b = o.breakable, def = b.def, P = this.game.particles;
     b.hits++;
+    this.game.sfx.swing(true);
     if (b.hits < def.hits) {
       b.flash = 6;
       if (P && def.hitFx) P.spawn(def.hitFx, o.x, o.y, 0);
       return;
     }
     b.broken = true;
+    this.game.sfx.debris();
     if (def.damage) { b.explodeAt = this.game.time + def.delay; b.attacker = attacker; }
     if (b.drop && this.game.pickups) this.game.pickups.spawn(b.drop, o.x, o.y, attacker);
     if (P && def.breakFx) P.spawn(def.breakFx, o.x, o.y, 0);
@@ -76,6 +78,7 @@ export class Breakables {
           for (const a of this.game.actors) if (a.alive && a !== b.attacker && b.attacker.isEnemyOf(a) && Math.hypot(a.x - o.x, a.y - o.y) <= 400) a.takeDamage(b.attacker, dmg);
         }
         if (this.game.particles) this.game.particles.spawn(801, o.x, o.y, 0);
+        this.game.sfx.explosion();
       }
     }
   }

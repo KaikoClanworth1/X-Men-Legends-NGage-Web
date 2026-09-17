@@ -1,9 +1,39 @@
 // Audio output: MELP speech (.elp), A-law sound banks (.swb), G.726 movie audio.
+// Mixer: master -> {music, sfx, voice} buses. Volumes persist in localStorage; ?mute=1 silences everything.
 let ctx = null;
+const buses = {};
+const SETTINGS_KEY = 'xml-web-audio';
+export const settings = (() => {
+  let s = { master: 1, music: 0.6, sfx: 0.9, voice: 1, muted: false };
+  try { s = { ...s, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { /* defaults */ }
+  if (new URLSearchParams(location.search).has('mute')) s.muted = true;
+  return s;
+})();
+export function saveAudioSettings() {
+  try { const { muted, ...rest } = settings; localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest)); } catch { /* ignore */ }
+}
+
 export function audioContext() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (ctx.state === 'suspended') ctx.resume();
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    buses.master = ctx.createGain();
+    buses.master.connect(ctx.destination);
+    for (const name of ['music', 'sfx', 'voice']) { buses[name] = ctx.createGain(); buses[name].connect(buses.master); }
+    applyVolumes();
+  }
+  if (ctx.state === 'suspended' && !settings.muted) ctx.resume();
   return ctx;
+}
+export function bus(name) { audioContext(); return buses[name] || buses.master; }
+export function applyVolumes() {
+  if (!ctx) return;
+  buses.master.gain.value = settings.muted ? 0 : settings.master;
+  for (const name of ['music', 'sfx', 'voice']) buses[name].gain.value = settings[name];
+}
+export function setVolume(name, value) {
+  settings[name] = Math.max(0, Math.min(1, value));
+  applyVolumes();
+  saveAudioSettings();
 }
 
 // MELP 2400 bps decoder (TI/DoD reference compiled to WebAssembly; see the asset viewer repo for the bit layout)
@@ -29,7 +59,7 @@ export async function decodeMELP(bytes) {
   return out;
 }
 
-export function playPCM(samples, rate = 8000, volume = 1) {
+export function playPCM(samples, rate = 8000, volume = 1, busName = 'sfx') {
   const ac = audioContext();
   const buf = ac.createBuffer(1, samples.length, rate);
   buf.copyToChannel(samples, 0);
@@ -37,7 +67,7 @@ export function playPCM(samples, rate = 8000, volume = 1) {
   const gain = ac.createGain();
   gain.gain.value = volume;
   src.buffer = buf;
-  src.connect(gain).connect(ac.destination);
+  src.connect(gain).connect(bus(busName));
   src.start();
   return src;
 }
@@ -52,6 +82,6 @@ export class Voice {
     if (!this.assets.has(name)) return;
     if (!this.cache.has(name)) this.cache.set(name, decodeMELP(await this.assets.bytes(name)));
     const pcm = await this.cache.get(name);
-    this.current = playPCM(pcm, 8000, volume);
+    this.current = playPCM(pcm, 8000, volume, 'voice');
   }
 }

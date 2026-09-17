@@ -57,6 +57,14 @@ export class Character {
   walkToTile(tx, ty) {
     return new Promise(done => { this.scriptWalk = { x: tx * 100 + 50, y: ty * 100 + 50, done }; });
   }
+  // bring a knocked-out hero back (revive items / level change)
+  revive(hpFraction = 0.5) {
+    if (this.alive) return;
+    this.knockedOut = false; this.state = S.IDLE; this.animDone = false;
+    this.hp = Math.max(1, Math.round(this.maxHP * hpFraction));
+    this.play(ANIM.i01);
+    this.game.sfx.status('revived');
+  }
   setLevel(n) { this.level = n; this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this); this.hp = this.maxHP; this.energy = this.maxEnergy; }
   taken(el) { return this.def ? this.def.taken[el] : 100; }
   bonusFlat(el) { return this.def ? this.def.flat[el] : 0; }
@@ -85,14 +93,16 @@ export class Character {
     this.state = S.MELEE;
     // damage is resolved at the start of the swing, before the animation (VA 0x100042cc)
     const [dx, dy] = stepForAngle(this.facing, 1).map(v => Math.sign(v));
-    const hit = target && target.alive && this.distTo(target) <= this.reach + 60 ? target
+    const hitTarget = target && target.alive && this.distTo(target) <= this.reach + 60 ? target
       : this.game.actors.find(a => a !== this && a.alive && this.isEnemyOf(a) && Math.hypot(a.x - (this.x + dx * this.reach / 2), a.y - (this.y + dy * this.reach / 2)) <= this.reach);
+    const hit = hitTarget;
     if (hit) this.resolveMelee(hit);
-    else if (this.isHero && this.game.breakables) this.game.breakables.tryHit(this, this.reach);
+    else if (!(this.isHero && this.game.breakables && this.game.breakables.tryHit(this, this.reach))) this.game.sfx.swing(false);
     this.play(this.def ? this.def.attackAnim : ANIM.m01, true);
   }
   resolveMelee(def) {
     const result = rollMelee(this, def);
+    this.game.sfx.swing(result === 3);
     if (result !== 3) { this.game.floatText(def, result === 2 ? 'block' : result === 1 ? 'dodge' : 'miss'); return; }
     const dmg = meleeDamage(this, def);
     def.takeDamage(this, dmg);
@@ -100,6 +110,7 @@ export class Character {
   takeDamage(attacker, dmg) {
     if (!this.alive) return;
     this.hp = Math.max(this.unkillable ? 1 : 0, this.hp - dmg);
+    if (Math.random() < 0.5 || this.hp <= 0) this.game.sfx.pain(this);
     if (this.unkillable && this.hp <= 1) {
       if (!this.defeatedFired) { this.defeatedFired = true; this.target = null; if (this.game.script) this.game.script.fire(this.name || this.key, 4, { character: this }); }
       return;
@@ -120,6 +131,7 @@ export class Character {
   }
   die(killer) {
     this.state = S.DIE;
+    if (this.isHero && this.team === 0) this.knockedOut = true;
     if (this.game.script) this.game.script.fire(this.name || this.key, 4, { character: this, killer });
     this.play(ANIM.d01, true);
     this.busy = Math.round(2000 / TICK_MS);
@@ -140,6 +152,7 @@ export class Character {
       this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this);
       this.hp = this.maxHP; this.energy = this.maxEnergy;
       this.game.floatText(this, 'LEVEL UP');
+      this.game.sfx.levelUp();
     }
   }
 

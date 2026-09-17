@@ -1,4 +1,4 @@
-import { audioContext } from './audio.js';
+import { audioContext, bus } from './audio.js';
 
 // Sound banks (.swb): "SW3\0", u16 count, u16, u32; 36-byte entries (char[24] name, u32 flags, u32 size, u32 offset from table end);
 // samples are 8 kHz 8-bit A-law. Music is short looping clips: menu1.swb/loop_menu, game1.swb/loop_battle + loop_boss,
@@ -54,9 +54,9 @@ export class Music {
     this.stop();
     if (!buf) return;
     const ac = audioContext(), src = ac.createBufferSource(), gain = ac.createGain();
-    gain.gain.value = this.volume;
+    gain.gain.value = 1;
     src.buffer = buf; src.loop = true;
-    src.connect(gain).connect(ac.destination);
+    src.connect(gain).connect(bus('music'));
     src.start();
     this.current = { key, src, gain };
   }
@@ -65,7 +65,6 @@ export class Music {
     try { this.current.src.stop(); } catch { /* already stopped */ }
     this.current = null;
   }
-  setVolume(v) { this.volume = v; if (this.current) this.current.gain.gain.value = v; }
 }
 
 // Track choice by map (location loops) with the battle loop as default.

@@ -1,4 +1,5 @@
 import { decodeG726 } from '../audio/g726.js';
+import { settings } from '../audio/audio.js';
 
 // Cutscene movies: MV_xx.avi (XviD 176x88, 15 fps) + MV_xx.a24 (G.726 24 kbps soundtrack) from the player's assets.pkg.
 // Browsers can't decode XviD, so the video is converted in the browser with ffmpeg.wasm (loaded once from jsDelivr) and cached.
@@ -87,6 +88,8 @@ export class MoviePlayer {
       if (url) {
         const video = document.createElement('video');
         video.src = url; video.autoplay = true; video.playsInline = true;
+        video.muted = settings.muted;
+        video.volume = settings.muted ? 0 : settings.master * settings.voice;
         const rect = canvas.getBoundingClientRect();
         video.style.cssText = `width:${Math.round(rect.width)}px;image-rendering:pixelated;background:#000`;
         label.textContent = 'Press any key to skip';
