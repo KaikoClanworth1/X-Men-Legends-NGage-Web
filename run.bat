@@ -15,5 +15,4 @@ if not defined PY (
 )
 
 start "" "http://localhost:%PORT%/"
-echo Serving on http://localhost:%PORT%/  - close this window to stop.
-%PY% -m http.server %PORT%
+%PY% serve.py %PORT%

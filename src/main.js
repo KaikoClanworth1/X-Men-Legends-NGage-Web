@@ -2,6 +2,10 @@ import { Assets } from './engine/assets.js';
 import { Input } from './engine/input.js';
 import { Game } from './game/game.js';
 import { FrontEnd } from './game/frontend.js';
+import { audioContext } from './audio/audio.js';
+
+// browsers only start audio after a user gesture
+for (const ev of ['keydown', 'pointerdown']) window.addEventListener(ev, () => { try { audioContext(); if (window.game) window.game.updateMusic(true); } catch { /* no audio */ } }, { once: true });
 
 const $ = s => document.querySelector(s);
 const status = t => { $('#status').textContent = t; };

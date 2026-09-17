@@ -47,6 +47,8 @@ export class ScriptRuntime {
   update(dtMs) {
     this.actionConsumed = false;
     const p = this.game.player;
+    // never steal the attack button while an enemy is within striking distance
+    const fighting = !!(p && p.alive && p.nearestEnemy(p.reach + 90));
     if (p && p.alive) {
       for (const z of this.zones) {
         if (!z.enabled) continue;
@@ -60,7 +62,7 @@ export class ScriptRuntime {
           z.inside = false;
           this.fire(z.rec.name, EVT.LEAVE, { zone: z, character: p });
         }
-        if (z.inside && this.game.input.wasPressed('attack')) {
+        if (z.inside && !fighting && this.game.input.wasPressed('attack')) {
           this.fire(z.rec.name, EVT.ACTION, { zone: z, character: p });
           this.actionConsumed = true;
         }
@@ -68,13 +70,13 @@ export class ScriptRuntime {
     }
     // characters with handlers fire enter/leave when the leader comes near (event 0 "came near an NPC")
     if (p && p.alive) for (const a of this.game.actors) {
-      if (a === p || a.team === 0 && a.isHero) continue;
+      if (a === p || a.team === 0 && a.isHero || a.team === 1) continue;
       const key = (a.name || a.key).toLowerCase();
       if (!this.handlers.has(key) && !this.handlers.has(a.key.toLowerCase())) continue;
       const d = Math.hypot(a.x - p.x, a.y - p.y);
       if (!a.scriptNear && d < 150) { a.scriptNear = true; this.fire(this.handlers.has(key) ? key : a.key, EVT.ENTER, { character: a }); }
       else if (a.scriptNear && d > 200) { a.scriptNear = false; this.fire(this.handlers.has(key) ? key : a.key, EVT.LEAVE, { character: a }); }
-      if (a.scriptNear && this.game.input.wasPressed('attack') && d < 150) { this.fire(this.handlers.has(key) ? key : a.key, EVT.ACTION, { character: a }); this.actionConsumed = true; }
+      if (a.scriptNear && !fighting && this.game.input.wasPressed('attack') && d < 150) { this.fire(this.handlers.has(key) ? key : a.key, EVT.ACTION, { character: a }); this.actionConsumed = true; }
     }
     for (const t of [...this.timers]) {
       t.left -= dtMs;

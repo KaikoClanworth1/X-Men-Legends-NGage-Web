@@ -85,7 +85,7 @@ export class Character {
     this.state = S.MELEE;
     // damage is resolved at the start of the swing, before the animation (VA 0x100042cc)
     const [dx, dy] = stepForAngle(this.facing, 1).map(v => Math.sign(v));
-    const hit = target && this.distTo(target) <= this.reach + target.radius ? target
+    const hit = target && target.alive && this.distTo(target) <= this.reach + 60 ? target
       : this.game.actors.find(a => a !== this && a.alive && this.isEnemyOf(a) && Math.hypot(a.x - (this.x + dx * this.reach / 2), a.y - (this.y + dy * this.reach / 2)) <= this.reach);
     if (hit) this.resolveMelee(hit);
     else if (this.isHero && this.game.breakables) this.game.breakables.tryHit(this, this.reach);
@@ -111,7 +111,12 @@ export class Character {
     const [kx, ky] = knockback(attacker, this, dmg);
     if (kx || ky) [this.x, this.y] = moveWithCollision(this.game.level.map, this.x, this.y, kx, ky, this.radius);
     if (!this.target && attacker) this.target = attacker;
-    if (this.hp <= 0) this.die(attacker);
+    if (this.hp <= 0) { this.die(attacker); return; }
+    // hit reaction: h01 for non-controlled characters that aren't mid-action (damage state, anim length)
+    if (this !== this.game.player && this.state !== S.MELEE && this.state !== S.SPECIAL && this.sheets[ANIM.h01]) {
+      this.state = S.DAMAGE;
+      this.play(ANIM.h01, true);
+    }
   }
   die(killer) {
     this.state = S.DIE;
@@ -177,6 +182,7 @@ export class Character {
     for (const k in this.statusTimers) if (this.statusTimers[k] > 0) this.statusTimers[k] = Math.max(0, this.statusTimers[k] - TICK_MS);
     if (this.flash) this.flash--;
     if (this.cooldown > 0) this.cooldown -= TICK_MS;
+    if (this.alive && this.energy < this.maxEnergy && (this.regenTick = (this.regenTick || 0) + 1) >= 20) { this.regenTick = 0; this.energy++; }
     if (this.effects.length) this.updateEffects();
     if (this.pendingPower && --this.pendingPower.timer <= 0) { const pp = this.pendingPower; this.pendingPower = null; resolvePower(this, pp); }
 
@@ -191,7 +197,7 @@ export class Character {
     }
     if (this.state === S.DEAD) return;
 
-    if (this.state === S.MELEE || this.state === S.SPECIAL) {
+    if (this.state === S.MELEE || this.state === S.SPECIAL || this.state === S.DAMAGE) {
       this.advanceAnim();
       if (this.animDone) { this.state = S.IDLE; this.play(ANIM.i01); }
       return;

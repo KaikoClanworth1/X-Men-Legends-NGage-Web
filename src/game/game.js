@@ -28,6 +28,7 @@ import { QuickMenu } from './quickmenu.js';
 import { PauseMenu } from './pausemenu.js';
 import { snapshot, writeSave } from './save.js';
 import { MoviePlayer } from './movie.js';
+import { Music, trackForMap } from '../audio/music.js';
 
 const randShake = k => Math.round((Math.random() * 2 - 1) * k);
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
@@ -43,10 +44,12 @@ export class Game {
     this.floaters = [];
     this.accum = 0;
     this.movie = new MoviePlayer(this);
+    this.music = new Music(assets);
   }
   async playMovie(id) {
     this.loading = true;
-    try { await this.movie.play(id); } finally { this.loading = false; }
+    this.music.stop();
+    try { await this.movie.play(id); } finally { this.loading = false; this.updateMusic(true); }
   }
   async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
     this.missionName = mddName;
@@ -93,6 +96,7 @@ export class Game {
     this.objectiveList = this.objectiveList || [];
     if (!this.objectiveText) { this.objectiveText = await this.assets.text('objectives.txt'); this.scriptText = await this.assets.text('scripts.txt'); }
     this.script = new ScriptRuntime(this, mission);
+    this.updateMusic(true);
     const Cls = missionScriptFor(mddName);
     this.missionScript = new Cls(this, this.script);
     this.missionScript.init();
@@ -105,6 +109,15 @@ export class Game {
     return c;
   }
   unlockHeroes(keys) { this.unlocked = new Set([...(this.unlocked || []), ...keys]); }
+  // location loop, or the boss loop while a hostile unkillable boss is close to the leader
+  updateMusic(force = false) {
+    if (!force && (this.musicTick = (this.musicTick || 0) + 1) % 25) return;
+    if (this.frontend && this.frontend.active) { this.music.play('menu1.swb', 'loop_menu'); return; }
+    if (!this.level || !this.player) return;
+    const boss = this.actors.some(a => a.unkillable && a.team === 1 && a.alive && a.distTo(this.player) < 900);
+    const [bank, clip] = boss ? ['game1.swb', 'loop_boss'] : trackForMap(this.level.name);
+    this.music.play(bank, clip);
+  }
   removeActor(a) { this.actors = this.actors.filter(x => x !== a); }
   party() { return this.actors.filter(a => a.team === 0 && a.isHero); }
   async setObjective(index, state) {
@@ -182,7 +195,7 @@ export class Game {
   }
   update() {
     this.input.pollGamepad();
-    if (this.frontend && this.frontend.active) { this.frontend.update(this.input); this.input.endFrame(); return; }
+    if (this.frontend && this.frontend.active) { this.frontend.update(this.input); this.updateMusic(); this.input.endFrame(); return; }
     if (this.dialogue && this.dialogue.active) {           // conversations pause the world
       this.dialogue.update(this.input);
       this.input.endFrame();
@@ -211,6 +224,7 @@ export class Game {
     for (const n of this.notices || []) n.life--;
     if (this.notices) this.notices = this.notices.filter(n => n.life > 0);
     this.updateCamera();
+    this.updateMusic();
     this.level.tick++;
     this.input.endFrame();
   }
