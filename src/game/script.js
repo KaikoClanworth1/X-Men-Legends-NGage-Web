@@ -70,7 +70,7 @@ export class ScriptRuntime {
     }
     // characters with handlers fire enter/leave when the leader comes near (event 0 "came near an NPC")
     if (p && p.alive) for (const a of this.game.actors) {
-      if (a === p || a.team === 0 && a.isHero || a.team === 1) continue;
+      if (a === p || a.inParty || a.team === 1) continue;
       const key = (a.name || a.key).toLowerCase();
       if (!this.handlers.has(key) && !this.handlers.has(a.key.toLowerCase())) continue;
       const d = Math.hypot(a.x - p.x, a.y - p.y);
@@ -91,6 +91,12 @@ export class ScriptRuntime {
 // Base class for per-mission scripts: wraps the framework API calls (names follow docs/specs/missions.md)
 export class MissionScript {
   constructor(game, rt) { this.game = game; this.rt = rt; }
+  // once the level is unloaded, a script's pending steps never resume (so it can't act on the next level)
+  live(promise) {
+    const halt = new Promise(() => {});
+    if (this.rt.dead) return halt;
+    return Promise.resolve(promise).then(v => (this.rt.dead ? halt : v));
+  }
   init() {}
   start() {}
   // entities
@@ -103,22 +109,22 @@ export class MissionScript {
   setNeutral(name) { for (const a of this.matching(name)) { a.team = 2; a.target = null; } }
   setUnkillable(name, on = true) { for (const a of this.matching(name)) a.unkillable = on; }
   setLevel(name, level) { for (const a of this.matching(name)) a.setLevel(level); }
-  walkToTile(name, tx, ty) { const a = this.find(name); return a ? a.walkToTile(tx, ty).then(() => this.rt.fire(name, 5, { character: a })) : Promise.resolve(); }
+  walkToTile(name, tx, ty) { const a = this.find(name); return a ? this.live(a.walkToTile(tx, ty)).then(() => this.rt.fire(name, 5, { character: a })) : Promise.resolve(); }
   kill(name) { for (const a of this.matching(name)) { a.unkillable = false; if (a.alive) a.die(null); } }
   teleport(name, x, y) { const a = this.find(name); if (a) { a.x = x; a.y = y; } }
   matching(name) { const n = name.toLowerCase(); return this.game.actors.filter(a => (a.name || '').toLowerCase() === n || a.key.toLowerCase() === n); }
   // conversation / text
-  dialogue(file, label) { return this.game.dialogue.start(file, label); }
-  async objective(index, state = 0) { await this.game.setObjective(index, state); }
+  dialogue(file, label) { return this.live(this.rt.dead ? null : this.game.dialogue.start(file, label)); }
+  objective(index, state = 0) { return this.live(this.rt.dead ? null : this.game.setObjective(index, state)); }
   message(index) { return this.game.scriptMessage(index); }
   // progression
   giveItem(name) { const it = this.game.assets.items.find(i => i.name.toLowerCase() === name.toLowerCase()); if (it) this.game.inventory.add(it); }
   hasItem(name) { const it = this.game.assets.items.find(i => i.name.toLowerCase() === name.toLowerCase()); return !!it && this.game.inventory.has(it); }
   questXP(n) { for (const a of this.game.party()) a.gainXP(n); }
-  changeLevel(mdd, spawn = 1) { return this.game.changeLevel(mdd, spawn); }
-  completeEpisode(spawn = 1) { return this.game.completeEpisode(spawn); }
+  changeLevel(mdd, spawn = 1) { return this.rt.dead ? this.live(null) : this.game.changeLevel(mdd, spawn); }
+  completeEpisode(spawn = 1) { return this.rt.dead ? this.live(null) : this.game.completeEpisode(spawn); }
   // presentation
   setControl(on) { this.game.playerControl = on; }
-  fadeOut() { return this.game.fade(1); }
-  fadeIn() { return this.game.fade(0); }
+  fadeOut() { return this.live(this.rt.dead ? null : this.game.fade(1)); }
+  fadeIn() { return this.live(this.rt.dead ? null : this.game.fade(0)); }
 }

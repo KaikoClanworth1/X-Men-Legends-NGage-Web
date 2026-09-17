@@ -58,7 +58,10 @@ export class Game {
   async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
     // keep hero progress (level, XP, stats, points, powers, equipment) across map changes
     this.heroProgress ||= new Map();
-    for (const a of (this.actors || [])) if (a.isHero && a.team === 0) this.heroProgress.set(a.key, a.progress());
+    for (const a of (this.actors || [])) if (a.inParty) this.heroProgress.set(a.key, a.progress());
+    if (this.script) this.script.dead = true;           // halt the previous level's script
+    if (this.dialogue && this.dialogue.active) { this.dialogue.active = null; this.voice.stop(); }
+    if (this.fadeDone) this.fadeDone = null;
     this.missionName = mddName;
     this.lastSpawn = spawnN;
     const mission = parseMission(await this.assets.bytes(mddName));
@@ -88,7 +91,7 @@ export class Game {
     const offsets = [[50, 50], [-30, 90], [90, -30], [-40, -40]];
     for (let i = 0; i < this.partyKeys.length; i++) {
       const hero = await Character.create(this, this.partyKeys[i], spawn.x + offsets[i][0], spawn.y + offsets[i][1]);
-      hero.team = 0; hero.name = this.partyKeys[i]; hero.isHero = true;
+      hero.team = 0; hero.name = this.partyKeys[i]; hero.isHero = true; hero.inParty = true;
       const saved = this.heroProgress.get(this.partyKeys[i]);
       if (saved) hero.applyProgress(saved);
       this.actors.push(hero);
@@ -99,6 +102,7 @@ export class Game {
       if (this.partyKeys.includes(r.kind.toLowerCase())) continue;          // party members replace their placed copies
       const npc = await Character.create(this, r.kind, r.x, r.y);
       npc.name = r.name;
+      if (npc.isHero) npc.team = 2;                                     // story heroes stand by until a script makes them allies
       this.actors.push(npc);
     }
     this.playerControl = true;
@@ -143,8 +147,7 @@ export class Game {
   async retry() {
     const keys = this.partyKeys.slice();
     this.loading = true;
-    await this.loadMission(this.missionName, keys[0], this.lastSpawn || 1, keys);
-    this.loading = false;
+    try { await this.loadMission(this.missionName, keys[0], this.lastSpawn || 1, keys); } finally { this.loading = false; }
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
   drawGameOver(g) {
@@ -168,7 +171,7 @@ export class Game {
     this.music.play(bank, clip);
   }
   removeActor(a) { this.actors = this.actors.filter(x => x !== a); }
-  party() { return this.actors.filter(a => a.team === 0 && a.isHero); }
+  party() { return this.actors.filter(a => a.inParty); }
   async setObjective(index, state) {
     const existing = this.objectiveList.find(o => o.index === index);
     if (existing) existing.state = state; else this.objectiveList.push({ index, state });
@@ -178,13 +181,13 @@ export class Game {
   scriptMessage(index) { const t = this.scriptText && this.scriptText[index]; if (t) this.notify(t, 70); }
   itemNameByName(name) { const it = this.assets.items.find(i => i.name.toLowerCase() === name.toLowerCase()); return it ? this.itemName(it) : name; }
   fade(target) {
+    if (this.fadeDone) { const d = this.fadeDone; this.fadeDone = null; d(); }   // never strand an earlier fade
     return new Promise(res => { this.fadeTarget = target; this.fadeDone = res; });
   }
   async changeLevel(mdd, spawnN = 1) {
     const hero = this.player ? this.player.key : 'wolverine';
     this.loading = true;
-    await this.loadMission(mdd.endsWith('.mdd') ? mdd : mdd + '.mdd', hero, spawnN);
-    this.loading = false;
+    try { await this.loadMission(mdd.endsWith('.mdd') ? mdd : mdd + '.mdd', hero, spawnN); } finally { this.loading = false; }
     writeSave(0, snapshot(this));
     this.notify('Auto-saved.', 40);
     this.fadeLevel = 1; this.fadeTarget = 0;
@@ -199,8 +202,7 @@ export class Game {
     const prevIdx = this.partyKeys.map(k => ['beast', 'colossus', 'cyclops', 'gambit', 'iceman', 'phoenix', 'magma', 'ncrawler', 'rogue', 'storm', 'wolverine'].indexOf(k));
     const keys = partyForEpisode(ep, prevIdx);
     this.loading = true;
-    await this.loadMission(ep.mdd, keys[0], spawnN, keys);
-    this.loading = false;
+    try { await this.loadMission(ep.mdd, keys[0], spawnN, keys); } finally { this.loading = false; }
     writeSave(0, snapshot(this));
     this.fadeLevel = 1; this.fadeTarget = 0;
   }
@@ -316,9 +318,14 @@ export class Game {
     const frame = now => {
       this.accum += Math.min(250, now - last);
       last = now;
-      while (this.accum >= TICK_MS) { this.update(); this.accum -= TICK_MS; }
-      this.render();
-      requestAnimationFrame(frame);
+      requestAnimationFrame(frame);                    // keep running even if a frame throws
+      try {
+        while (this.accum >= TICK_MS) { this.accum -= TICK_MS; this.update(); }
+        this.render();
+      } catch (e) {
+        if (!this.lastFrameError || now - this.lastFrameError > 2000) console.error('frame', e);
+        this.lastFrameError = now; this.input.endFrame();
+      }
     };
     requestAnimationFrame(frame);
   }

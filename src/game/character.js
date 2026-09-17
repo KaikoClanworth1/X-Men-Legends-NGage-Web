@@ -141,7 +141,7 @@ export class Character {
   }
   die(killer) {
     this.state = S.DIE;
-    if (this.isHero && this.team === 0) this.knockedOut = true;
+    if (this.inParty) this.knockedOut = true;
     if (this.game.script) this.game.script.fire(this.name || this.key, 4, { character: this, killer });
     this.play(ANIM.d01, true);
     this.busy = Math.round(2000 / TICK_MS);
@@ -241,7 +241,7 @@ export class Character {
     }
     if (this === this.game.player) this.updatePlayer(level, move);
     else if (this.team === 1) this.updateEnemyAI(level);
-    else if (this.team === 0 && this.isHero) this.updateTeammateAI(level);
+    else if (this.inParty || (this.team === 0 && this.isHero)) this.updateTeammateAI(level);
     else this.play(ANIM.i01);
     this.advanceAnim();
   }

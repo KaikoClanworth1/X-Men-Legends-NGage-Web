@@ -21,7 +21,7 @@ class Pickup {
     if (this.z <= 0) { this.z = 0; this.vz = -this.vz * 0.5; if (!this.owner) { this.vx *= 0.5; this.vy *= 0.5; } if (Math.abs(this.vz) < 12) this.vz = 0; }
     // touch pickup: +-20 box overlap with a hero's collision quad
     for (const a of this.game.actors) {
-      if (!a.alive || !a.isHero || a.team !== 0) continue;
+      if (!a.alive || !a.inParty) continue;
       if (Math.abs(a.x - 20 - this.x) <= 50 && Math.abs(a.y - 20 - this.y) <= 50) {
         if (this.game.inventory.add(this.item)) {
           this.gone = true;

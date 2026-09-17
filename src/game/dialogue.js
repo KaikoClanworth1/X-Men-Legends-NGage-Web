@@ -80,6 +80,7 @@ export class Dialogue {
       }
       return;
     }
+    if (!a.lines) return;                             // line still loading its portrait
     if (input.wasPressed('attack') || input.wasPressed('menu')) {
       if ((a.page + 1) * 5 < a.lines.length) { a.page++; return; }
       this.advance(n);
@@ -111,6 +112,6 @@ export class Dialogue {
     if (pf) g.drawImage(pf.canvas, 142 - pf.hx, 94 - pf.hy);
     if (frame) g.drawImage(frame.canvas, 140 - frame.hx, 92 - frame.hy);
     f7.draw(g, a.speaker || '', 4, 110, { color: '#ffff00' });
-    a.lines.slice(a.page * 5, a.page * 5 + 5).forEach((line, i) => f7.draw(g, line, 4, 127 + i * (f7.height + 3)));
+    (a.lines || []).slice(a.page * 5, a.page * 5 + 5).forEach((line, i) => f7.draw(g, line, 4, 127 + i * (f7.height + 3)));
   }
 }
