@@ -66,6 +66,16 @@ export class ScriptRuntime {
         }
       }
     }
+    // characters with handlers fire enter/leave when the leader comes near (event 0 "came near an NPC")
+    if (p && p.alive) for (const a of this.game.actors) {
+      if (a === p || a.team === 0 && a.isHero) continue;
+      const key = (a.name || a.key).toLowerCase();
+      if (!this.handlers.has(key) && !this.handlers.has(a.key.toLowerCase())) continue;
+      const d = Math.hypot(a.x - p.x, a.y - p.y);
+      if (!a.scriptNear && d < 150) { a.scriptNear = true; this.fire(this.handlers.has(key) ? key : a.key, EVT.ENTER, { character: a }); }
+      else if (a.scriptNear && d > 200) { a.scriptNear = false; this.fire(this.handlers.has(key) ? key : a.key, EVT.LEAVE, { character: a }); }
+      if (a.scriptNear && this.game.input.wasPressed('attack') && d < 150) { this.fire(this.handlers.has(key) ? key : a.key, EVT.ACTION, { character: a }); this.actionConsumed = true; }
+    }
     for (const t of [...this.timers]) {
       t.left -= dtMs;
       if (t.left <= 0) {

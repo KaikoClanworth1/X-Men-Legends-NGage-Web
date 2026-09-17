@@ -11,6 +11,7 @@ import { ScriptRuntime } from './script.js';
 import { missionScriptFor } from './missions/index.js';
 import './missions/e01m01.js';
 import './missions/e01.js';
+import './missions/e02.js';
 import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
 import { PauseMenu } from './pausemenu.js';
