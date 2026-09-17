@@ -80,7 +80,7 @@ export class PauseMenu {
   }
   // Team: party slots; free-choice slots (11 in the episode table) can be swapped for unlocked heroes
   teamItems() {
-    const g = this.game, ep = EPISODES[g.episode] || null;
+    const g = this.game, ep = EPISODES[g.currentEpisode()] || null;
     return g.partyKeys.map((key, i) => {
       const forced = ep && ep.slots[i] !== 11 && ep.slots[i] !== 255;
       const def = g.assets.characters.get(key);
@@ -88,20 +88,15 @@ export class PauseMenu {
     });
   }
   teamPickItems() {
-    const g = this.game, ep = EPISODES[g.episode] || null;
+    const g = this.game, ep = EPISODES[g.currentEpisode()] || null;
     const unlocked = new Set([...(g.unlocked || []), ...g.partyKeys]);
     return HEROES.filter(k => unlocked.has(k) && !g.partyKeys.includes(k) && !(ep && ep.lockMask >> HEROES.indexOf(k) & 1))
       .map(k => ({ label: g.hud.names[g.assets.characters.get(k).nameId] || k, go: () => this.swapHero(this.teamSlot, k) }));
   }
   async swapHero(slot, key) {
     const g = this.game;
-    const keys = g.partyKeys.slice();
-    keys[slot] = key;
     this.close();
-    g.loading = true;
-    const leader = g.player.key === g.partyKeys[slot] ? key : g.player.key;
-    await g.loadMission(g.missionName, leader, g.lastSpawn || 1, [leader, ...keys.filter(k => k !== leader)]);
-    g.loading = false;
+    await g.swapPartyMember(g.partyKeys[slot], key);
   }
 
   update(input) {

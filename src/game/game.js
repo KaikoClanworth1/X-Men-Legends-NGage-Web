@@ -123,6 +123,28 @@ export class Game {
     this.actors.push(c);
     return c;
   }
+  // episode row for the current map: explicit, else by the map's episode prefix (e08m05 -> row starting e08)
+  currentEpisode() {
+    if (this.episode !== undefined && this.episode !== null && EPISODES[this.episode]) return this.episode;
+    const i = EPISODES.findIndex(e => e.mdd.slice(0, 3).toLowerCase() === (this.missionName || '').slice(0, 3).toLowerCase());
+    return i >= 0 ? i : null;
+  }
+  // swap one party member for another hero in place (keeps the level and mission state)
+  async swapPartyMember(oldKey, newKey) {
+    const old = this.party().find(a => a.key === oldKey);
+    if (!old) return;
+    this.heroProgress ||= new Map();
+    this.heroProgress.set(oldKey, old.progress());
+    const hero = await Character.create(this, newKey, old.x, old.y);
+    hero.team = 0; hero.name = newKey; hero.isHero = true; hero.inParty = true;
+    const saved = this.heroProgress.get(newKey);
+    if (saved) hero.applyProgress(saved); else hero.setLevel(Math.max(1, this.player.level));
+    hero.facing = old.facing;
+    this.actors[this.actors.indexOf(old)] = hero;
+    this.partyKeys = this.partyKeys.map(k => (k === oldKey ? newKey : k));
+    if (this.player === old) { this.player = hero; this.lead = null; }
+    if (this.hud) this.hud.portrait(newKey);
+  }
   unlockHeroes(keys) { this.unlocked = new Set([...(this.unlocked || []), ...keys]); }
   // Party knock-outs (docs/specs/combat.md §2): switch to a standing hero; all down -> game over (menus 116-119)
   checkParty() {
@@ -195,7 +217,7 @@ export class Game {
   // CompleteEpisode (VA 0x10029d74): store party, advance the episode table, load its map at spawnN
   async completeEpisode(spawnN = 1) {
     // current episode: explicit, else by episode prefix of the current map (e01m02 -> table row starting e01)
-    const cur = this.episode ?? EPISODES.findIndex(e => e.mdd.slice(0, 3).toLowerCase() === (this.missionName || '').slice(0, 3).toLowerCase());
+    const cur = this.currentEpisode() ?? -1;
     this.episode = Math.min(EPISODES.length - 1, Math.max(0, cur) + 1);
     const ep = EPISODES[this.episode];
     if (this.nextMovie) { const m = this.nextMovie; this.nextMovie = null; await this.playMovie(m); }
