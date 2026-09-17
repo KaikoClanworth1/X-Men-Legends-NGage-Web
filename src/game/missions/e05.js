@@ -89,6 +89,9 @@ export class E05M10 extends BaseMission {
       if (e.code !== EVT.DEFEATED || !once(this, 'marrowDown')) return;
       for (const n of ['marrow', 'character32', 'character33']) this.setNeutral(n);
       await this.dialogue('e05m10', 'marrowover');
+      this.setLevel('gambit', this.game.player.level);
+      this.setUnkillable('gambit');
+      this.addToParty('gambit');
       await this.objective(11, 2);
       await this.objective(12, 0);
     });

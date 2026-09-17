@@ -241,7 +241,7 @@ export class Character {
     }
     if (this === this.game.player) this.updatePlayer(level, move);
     else if (this.team === 1) this.updateEnemyAI(level);
-    else if (this.inParty || (this.team === 0 && this.isHero)) this.updateTeammateAI(level);
+    else if (this.inParty || (this.team === 0 && (this.isHero || this.follower))) this.updateTeammateAI(level);
     else this.play(ANIM.i01);
     this.advanceAnim();
   }

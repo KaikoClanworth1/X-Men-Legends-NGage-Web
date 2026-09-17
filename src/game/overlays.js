@@ -18,7 +18,8 @@ export const STANCES = [
 
 export function formationOffset(game, actor) {
   const mates = game.party().filter(a => a !== game.player);
-  const slot = FORMATIONS[game.formation || 0].slots[Math.max(0, mates.indexOf(actor)) % 4];
+  const idx = mates.indexOf(actor);                // escorts (not in the party) trail in the last slot
+  const slot = FORMATIONS[game.formation || 0].slots[idx < 0 ? 3 : idx % 4];
   // slot = [sideways, forward] relative to the leader's facing (angle 0 = +x, 256 = -y)
   const ang = (game.player.facing / 1024) * Math.PI * 2;
   const c = Math.cos(ang), s = Math.sin(ang);

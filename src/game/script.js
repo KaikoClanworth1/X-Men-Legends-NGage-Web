@@ -106,6 +106,8 @@ export class MissionScript {
   remove(name) { const a = this.find(name); if (a) this.game.removeActor(a); }
   setEnemy(name) { for (const a of this.matching(name)) { a.team = 1; } }
   setAlly(name) { for (const a of this.matching(name)) { a.team = 0; } }
+  // AddToParty (VA 0x100297c8): the character joins the team and follows the leader (not player-controlled)
+  addToParty(name) { for (const a of this.matching(name)) { a.team = 0; a.follower = true; a.target = null; } }
   setNeutral(name) { for (const a of this.matching(name)) { a.team = 2; a.target = null; } }
   setUnkillable(name, on = true) { for (const a of this.matching(name)) a.unkillable = on; }
   setLevel(name, level) { for (const a of this.matching(name)) a.setLevel(level); }

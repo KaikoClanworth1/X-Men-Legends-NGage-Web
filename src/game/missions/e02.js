@@ -89,6 +89,7 @@ export class E02M05 extends BaseMission {
     onAction(this, zones(this, 'toFloor'), ending);
   }
   async start() {
+    this.addToParty('xavier');                      // Xavier leads the tour
     await this.dialogue('mission02', 'EnterSubbase');
     const tour = await this.dialogue('mission02', 'Start Tour 2');
     this.touring = tour === 1 || tour === 0;
