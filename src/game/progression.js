@@ -18,14 +18,17 @@ export const EPISODES = [
 // New game: episode 1, default party 10, 2, 5, 8 (save format defaults)
 export const DEFAULT_PARTY = [10, 2, 5, 8];
 
-// Resolve the party for an episode: forced slots win; free slots (11) keep the previous choice; 255 = empty.
-export function partyForEpisode(ep, previous) {
+// Resolve the party for an episode: forced slots win; free slots (11) keep the previous choice, then take other
+// unlocked heroes (or heroes already met in earlier episodes) that the episode doesn't lock out; 255 = empty.
+export function partyForEpisode(ep, previous, unlocked = []) {
   const used = new Set();
   const out = ep.slots.map(s => (s !== 11 && s !== 255 ? s : null));
   out.forEach(s => s !== null && used.add(s));
   for (let i = 0; i < 4; i++) {
     if (out[i] !== null || ep.slots[i] === 255) continue;
-    const pick = (previous || DEFAULT_PARTY).find(h => h !== 255 && h !== null && !used.has(h) && !(ep.lockMask >> h & 1));
+    const met = EPISODES.slice(0, Math.max(0, EPISODES.indexOf(ep))).flatMap(e => e.slots);
+    const pool = [...(previous || DEFAULT_PARTY), ...unlocked.map(k => HEROES.indexOf(k)), ...met, ...DEFAULT_PARTY];
+    const pick = pool.find(h => h >= 0 && h < HEROES.length && h !== 255 && h !== null && !used.has(h) && !(ep.lockMask >> h & 1));
     if (pick !== undefined) { out[i] = pick; used.add(pick); }
   }
   return out.map(s => (s === null ? 255 : s)).filter(s => s !== 255).map(s => HEROES[s]);

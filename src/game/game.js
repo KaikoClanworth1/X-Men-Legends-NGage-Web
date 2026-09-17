@@ -200,7 +200,7 @@ export class Game {
     const ep = EPISODES[this.episode];
     if (this.nextMovie) { const m = this.nextMovie; this.nextMovie = null; await this.playMovie(m); }
     const prevIdx = this.partyKeys.map(k => ['beast', 'colossus', 'cyclops', 'gambit', 'iceman', 'phoenix', 'magma', 'ncrawler', 'rogue', 'storm', 'wolverine'].indexOf(k));
-    const keys = partyForEpisode(ep, prevIdx);
+    const keys = partyForEpisode(ep, prevIdx, [...(this.unlocked || [])]);
     this.loading = true;
     try { await this.loadMission(ep.mdd, keys[0], spawnN, keys); } finally { this.loading = false; }
     writeSave(0, snapshot(this));

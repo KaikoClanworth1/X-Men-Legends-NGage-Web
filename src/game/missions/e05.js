@@ -92,6 +92,7 @@ export class E05M10 extends BaseMission {
       this.setLevel('gambit', this.game.player.level);
       this.setUnkillable('gambit');
       this.addToParty('gambit');
+      this.game.unlockHeroes(['gambit']);
       await this.objective(11, 2);
       await this.objective(12, 0);
     });
