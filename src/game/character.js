@@ -65,10 +65,19 @@ export class Character {
     this.play(ANIM.i01);
     this.game.sfx.status('revived');
   }
-  setLevel(n) { this.level = n; this.maxHP = maxHP(this); this.maxEnergy = maxEnergy(this); this.hp = this.maxHP; this.energy = this.maxEnergy; }
-  taken(el) { return this.def ? this.def.taken[el] : 100; }
-  bonusFlat(el) { return this.def ? this.def.flat[el] : 0; }
-  bonusPct(el) { return this.def ? this.def.pct[el] : 0; }
+  setLevel(n) { this.level = n; this.recalcBonuses(); this.hp = this.maxHP; this.energy = this.maxEnergy; }
+  // progress that must survive level changes and saves
+  progress() { return { level: this.level, xp: this.xp, base: this.base.slice(), statPoints: this.statPoints || 0, skillPoints: this.skillPoints || 0, powerLevels: (this.powerLevels || [1, 1, 1, 1]).slice(), equipment: (this.equipment || [null, null]).slice(), hp: this.hp, energy: this.energy, knockedOut: !this.alive }; }
+  applyProgress(p) {
+    Object.assign(this, { xp: p.xp, base: p.base.slice(), statPoints: p.statPoints, skillPoints: p.skillPoints, powerLevels: p.powerLevels.slice(), equipment: p.equipment.slice() });
+    this.setLevel(p.level);
+  }
+  // base values + equipment (VA 0x100096f8: equipment damage-taken adds (value - 100))
+  gear() { return (this.equipment || []).filter(Boolean); }
+  taken(el) { return (this.def ? this.def.taken[el] : 100) + this.gear().reduce((s, it) => s + (it.taken[el] - 100), 0); }
+  bonusFlat(el) { return (this.def ? this.def.flat[el] : 0) + this.gear().reduce((s, it) => s + it.flat[el], 0); }
+  bonusPct(el) { return (this.def ? this.def.pct[el] : 0) + this.gear().reduce((s, it) => s + it.pct[el], 0); }
+  equip(slot, item) { (this.equipment ||= [null, null])[slot] = item; this.recalcBonuses(); }
   get alive() { return this.state !== S.DIE && this.state !== S.DEAD; }
   get reach() { return this.def ? this.def.reach : 130; }
   get sight() { return this.def ? this.def.sight : 500; }
@@ -165,6 +174,11 @@ export class Character {
   recalcBonuses() {
     this.bonus = [0, 0, 0, 0];
     for (const e of this.effects) e.item.stats.forEach((v, i) => { this.bonus[i] += v; });
+    for (const it of this.gear()) it.stats.forEach((v, i) => { this.bonus[i] += v; });
+    const oldHP = this.maxHP, oldEP = this.maxEnergy;
+    this.maxHP = maxHP(this) + this.gear().reduce((s, it) => s + it.hpBonus, 0);
+    this.maxEnergy = maxEnergy(this) + this.gear().reduce((s, it) => s + it.energyBonus, 0);
+    if (oldHP) { this.hp = Math.min(this.maxHP, this.hp); this.energy = Math.min(this.maxEnergy, this.energy); }
   }
   updateEffects() {
     let changed = false;

@@ -13,9 +13,11 @@ export function snapshot(game) {
     spawn: game.lastSpawn || 1,
     lang: game.lang || 'en',
     leader: game.player ? game.player.key : null,
-    party: game.party().map(a => ({ key: a.key, level: a.level, xp: a.xp, base: a.base, statPoints: a.statPoints || 0, skillPoints: a.skillPoints || 0, hp: a.hp, energy: a.energy, powerLevels: a.powerLevels || [1, 1, 1, 1] })),
+    party: game.party().map(a => ({ key: a.key, level: a.level, xp: a.xp, base: a.base, statPoints: a.statPoints || 0, skillPoints: a.skillPoints || 0, hp: a.hp, energy: a.energy, powerLevels: a.powerLevels || [1, 1, 1, 1], equipment: (a.equipment || []).map(it => (it ? it.code : 0)) })),
     inventory: [...game.inventory.counts.entries()],
     objectives: game.objectiveList || [],
+    unlocked: [...(game.unlocked || [])],
+    episodeVars: game.episodeVars || {},
     vars: game.missionScript && game.missionScript.saveVars ? game.missionScript.saveVars() : {},
   };
 }
@@ -41,15 +43,16 @@ export async function restore(game, data) {
   game.playMs = data.playMs || 0;
   game.objectiveList = data.objectives || [];
   game.inventory.counts = new Map(data.inventory);
+  const item = code => (code ? game.assets.items.find(it => it.code === code) || null : null);
+  game.actors = [];
+  game.heroProgress = new Map(data.party.map(p => [p.key, {
+    level: p.level, xp: p.xp, base: p.base, statPoints: p.statPoints || 0, skillPoints: p.skillPoints || 0,
+    powerLevels: p.powerLevels || [1, 1, 1, 1], equipment: (p.equipment || [0, 0]).map(item),
+  }]));
+  game.unlocked = new Set(data.unlocked || []);
+  game.episodeVars = data.episodeVars || {};
   game.loading = true;
   await game.loadMission(data.mission, leader, data.spawn || 1, [leader, ...keys.filter(k => k !== leader)], data.vars);
-  for (const p of data.party) {
-    const a = game.party().find(x => x.key === p.key);
-    if (!a) continue;
-    a.base = p.base; a.xp = p.xp; a.statPoints = p.statPoints; a.skillPoints = p.skillPoints; a.powerLevels = p.powerLevels;
-    a.setLevel(p.level);
-    a.hp = Math.min(a.maxHP, p.hp || a.maxHP); a.energy = Math.min(a.maxEnergy, p.energy || a.maxEnergy);
-  }
   game.loading = false;
   game.fadeLevel = 1; game.fadeTarget = 0;
 }

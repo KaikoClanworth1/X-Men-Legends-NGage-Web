@@ -54,6 +54,9 @@ export class Game {
     try { await this.movie.play(id); } finally { this.loading = false; this.updateMusic(true); }
   }
   async loadMission(mddName, heroKey = 'wolverine', spawnN = 1, partyKeys = null) {
+    // keep hero progress (level, XP, stats, points, powers, equipment) across map changes
+    this.heroProgress ||= new Map();
+    for (const a of (this.actors || [])) if (a.isHero && a.team === 0) this.heroProgress.set(a.key, a.progress());
     this.missionName = mddName;
     this.lastSpawn = spawnN;
     const mission = parseMission(await this.assets.bytes(mddName));
@@ -83,6 +86,8 @@ export class Game {
     for (let i = 0; i < this.partyKeys.length; i++) {
       const hero = await Character.create(this, this.partyKeys[i], spawn.x + offsets[i][0], spawn.y + offsets[i][1]);
       hero.team = 0; hero.name = this.partyKeys[i]; hero.isHero = true;
+      const saved = this.heroProgress.get(this.partyKeys[i]);
+      if (saved) hero.applyProgress(saved);
       this.actors.push(hero);
       if (i === 0) this.player = hero;
     }
