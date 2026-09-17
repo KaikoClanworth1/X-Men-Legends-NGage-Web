@@ -22,6 +22,7 @@ import './missions/e11.js';
 import './missions/e12e14.js';
 import './missions/e15e17.js';
 import './missions/e18e21.js';
+import './missions/e22e25.js';
 import { EPISODES, partyForEpisode } from './progression.js';
 import { QuickMenu } from './quickmenu.js';
 import { PauseMenu } from './pausemenu.js';
