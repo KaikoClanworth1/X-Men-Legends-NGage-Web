@@ -29,13 +29,13 @@ export class Hud {
   damage(target, amount, heal = false) {
     this.numbers.push({ text: String(amount), heal, hero: target === this.game.player, life: 100, alpha: 255 });
     if (this.numbers.length > 16) this.numbers.shift();
-    if (target !== this.game.player && !heal) { this.enemy = target; this.enemyFlash = 4; }
+    if (target !== this.game.player && !target.inParty && !heal) { this.enemy = target; this.enemyFlash = 4; }
   }
   update() {
     for (const n of this.numbers) { n.life--; n.alpha -= 8; }
     this.numbers = this.numbers.filter(n => n.alpha > 0);
     if (this.enemyFlash) this.enemyFlash--;
-    if (this.enemy && !this.enemy.alive) this.enemy = null;
+    if (this.enemy && (!this.enemy.alive || !this.game.actors.includes(this.enemy))) this.enemy = null;   // dead, or left behind on another level
   }
   draw(g) {
     const p = this.game.player;
