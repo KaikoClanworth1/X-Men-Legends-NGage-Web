@@ -266,6 +266,7 @@ export class Game {
     for (const n of this.notices || []) n.life--;
     if (this.notices) this.notices = this.notices.filter(n => n.life > 0);
     this.checkParty();
+    this.level.updateDoors(this.actors, open => this.sfx.door(open, /man|muir|sew/.test(this.level.name) ? 'wood' : /astm|arb|sent/.test(this.level.name) ? 'space' : 'metal'));
     this.updateCamera();
     this.updateMusic();
     this.level.tick++;
