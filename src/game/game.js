@@ -1,6 +1,7 @@
 import { Level, worldToScreen } from '../engine/level.js';
 import { parseMission } from '../formats/map.js';
 import { Character, TICK_MS, S } from './character.js';
+import { Hud } from './hud.js';
 
 export const SCREEN_W = 176, SCREEN_H = 208;   // N-Gage display
 
@@ -21,6 +22,7 @@ export class Game {
     this.level = await Level.load(this.assets, mission.map);
     this.actors = [];
     this.floaters = [];
+    if (!this.hud) this.hud = await Hud.load(this);
     const spawn = mission.records.find(r => r.type === 4 && /^spawn/i.test(r.name)) || mission.records.find(r => r.type === 4) || { x: 300, y: 300 };
     this.player = await Character.create(this, heroKey, spawn.x + 50, spawn.y + 50);
     this.player.team = 0;
@@ -33,6 +35,7 @@ export class Game {
     }
   }
   floatText(actor, text) {
+    if (/^\d+$/.test(text) && this.hud) { this.hud.damage(actor, text); return; }
     this.floaters.push({ x: actor.x, y: actor.y, z: 90, text, life: 18 });
   }
   // screen-relative d-pad -> world direction (screen up = world (-1,-1))
@@ -49,6 +52,7 @@ export class Game {
     for (const a of this.actors) a.update(this.level, a === this.player ? move : null);
     for (const f of this.floaters) { f.life--; f.z += 3; }
     this.floaters = this.floaters.filter(f => f.life > 0);
+    if (this.hud) this.hud.update();
     this.level.tick++;
     this.input.endFrame();
   }
@@ -68,10 +72,7 @@ export class Game {
       g.fillStyle = '#000'; g.fillText(f.text, sx - camX + 1, sy - camY + 1);
       g.fillStyle = '#ffd84a'; g.fillText(f.text, sx - camX, sy - camY);
     }
-    // temporary HUD until the original HUD spec is implemented
-    const bar = (y, v, max, color) => { g.fillStyle = '#000a'; g.fillRect(3, y, 62, 5); g.fillStyle = color; g.fillRect(4, y + 1, Math.round(60 * v / Math.max(1, max)), 3); };
-    bar(3, p.hp, p.maxHP, '#d33'); bar(9, p.energy, p.maxEnergy, '#39f');
-    g.textAlign = 'left'; g.fillStyle = '#fff'; g.fillText(`Lv${p.level}`, 68, 9);
+    if (this.hud) this.hud.draw(g);
     if (!p.alive) { g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = '10px monospace'; g.fillText('DEFEATED', SCREEN_W / 2, SCREEN_H / 2); }
   }
   start() {
