@@ -134,7 +134,7 @@ func fn_100a2b0c  //
     Api::GiveQuestXP(0x1e8480)
     Api::ShowPopupText(0x52)   // text: 2,000,000 Quest XP
   L_100a2d60:
-    Api::StartDialogue("Illyana-6", this, fn_100a2ddc, 0)   // dlg e22m22: Moira: No matter. What's important is that Illyana will make a full recovery. ... results=0
+    Api::StartDialogue("Illyana-6", this, fn_100a2ddc, 0)   // dlg e22m22: Moira: … ... results=0
     goto L_100a2dc0
   L_100a2d7c:
     Api::FadeOut(this, fn_100a2dcc)

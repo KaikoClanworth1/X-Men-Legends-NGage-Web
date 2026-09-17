@@ -223,7 +223,7 @@ func fn_100a3d68  //
     goto L_100a3e18
   L_100a3e04:
   L_100a3e18:
-    Api::StartDialogue("introreturn", this, 0, 0)   // dlg tutorial: X-Computer: Use the controller key to move in front of a terminal and the confirm key to select a training pro ... results=0
+    Api::StartDialogue("introreturn", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::AddObjective(0x30, 0)   // obj: Select a training program
     goto L_100a3e38
   L_100a3e38:
@@ -284,7 +284,7 @@ func fn_100a3fbc  //
     goto L_100a4080
   L_100a3ff0:
     Api::ClearMessages()
-    Api::StartDialogue("exittutorial", this, fn_100a409c, 0)   // dlg tutorial: X-Computer: This terminal will terminate the X-men training program.  Do you wish to exit? ... results=0,1
+    Api::StartDialogue("exittutorial", this, fn_100a409c, 0)   // dlg tutorial: X-Computer: … ... results=0,1
     goto L_100a4080
   L_100a4038:
     Api::FadeOut(this, fn_100a408c)
@@ -339,7 +339,7 @@ func fn_100a415c  //
     Api::FadeIn(this, fn_100a460c)
     goto L_100a4600
   L_100a4234:
-    Api::StartDialogue("battle1", this, 0, 0)   // dlg tutorial: X-Computer: In this simulation we will be going over some basic movement and combat techniques. ... results=0
+    Api::StartDialogue("battle1", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a438c
   L_100a4260:
     Api::SetObjective(0x32, 2, 1)   // obj: Proceed to the next room
@@ -357,12 +357,12 @@ func fn_100a415c  //
     Api::CameraFollowPlayer(0x2ff)
     goto L_100a4600
   L_100a4368:
-    Api::StartDialogue("battle4", this, 0, 0)   // dlg tutorial: X-Computer: Alright, you should be in range now. ... results=0
+    Api::StartDialogue("battle4", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
   L_100a438c:
     Api::AddObjective(0x33, 1)   // obj: Kill first training dummy
     goto L_100a4600
   L_100a439c:
-    Api::StartDialogue("battle5", this, 0, 0)   // dlg tutorial: X-Computer: Good job! ... results=0
+    Api::StartDialogue("battle5", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::SetCinematicMode(1, 1)
     Api::SetHudVisible(0)
     Api::MapSet1(7, 0x21, 0)
@@ -387,7 +387,7 @@ func fn_100a415c  //
     Script::GetPartyMemberId(0)
     Api::SetActionPromptId(ret_GetPartyMemberId, 1)
   L_100a4538:
-    Api::StartDialogue("battleconcluded", this, fn_100a461c, 0)   // dlg tutorial: X-Computer: This concludes the basic movement and combat techniques simulation. ... results=0
+    Api::StartDialogue("battleconcluded", this, fn_100a461c, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a4600
   L_100a4550:
     Api::FadeOut(this, fn_100a460c)
@@ -515,12 +515,12 @@ func fn_100a47a8  //
     Api::AddToParty("cyclops")
     goto L_100a4b50
   L_100a4978:
-    Api::StartDialogue("switch3", this, 0, 0)   // dlg tutorial: X-Computer: Good job! ... results=0
+    Api::StartDialogue("switch3", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::SetObjective(0x3b, 2, 1)   // obj: Switch to Cyclops and proceed to the next room
     Api::AddObjective(0x3c, 1)   // obj: Switch to Wolverine and proceed to the final room
     goto L_100a4c04
   L_100a49c0:
-    Api::StartDialogue("switch4", this, fn_100a4c20, 0)   // dlg tutorial: X-Computer: Excellent work X-men! ... results=0
+    Api::StartDialogue("switch4", this, fn_100a4c20, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::SetObjective(0x3c, 2, 1)   // obj: Switch to Wolverine and proceed to the final room
     goto L_100a4c04
   L_100a4a14:
@@ -544,7 +544,7 @@ func fn_100a47a8  //
     goto L_100a4c04
   L_100a4b28:
   L_100a4b50:
-    Api::StartDialogue("switchfail2", this, fn_100a4c20, 0)   // dlg tutorial: X-Computer: You must change your team leader to Wolverine.  Press and hold the character select key ('8') foll ... results=0
+    Api::StartDialogue("switchfail2", this, fn_100a4c20, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a4c04
   L_100a4b68:
     Api::FadeOut(this, fn_100a4c10)
@@ -656,7 +656,7 @@ func fn_100a4dc4  //
     goto L_100a513c
   L_100a5018:
   L_100a5040:
-    Api::StartDialogue("barriersfinal", this, fn_100a5158, 0)   // dlg tutorial: X-Computer: This concludes the destroyable walls and forcefields training simulation. ... results=0
+    Api::StartDialogue("barriersfinal", this, fn_100a5158, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a513c
   L_100a5058:
     Api::SetPlayerControl(0)
@@ -798,7 +798,7 @@ func fn_100a5414  //
     Api::SetHealthId(ret_GetPartyMemberId, 0x203)
     Api::SetObjective(0x38, 2, 1)   // obj: Use item
   L_100a568c:
-    Api::StartDialogue("items4", this, fn_100a5788, 0)   // dlg tutorial: X-Computer: And now your health is fully restored. ... results=0
+    Api::StartDialogue("items4", this, fn_100a5788, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a576c
   L_100a56a8:
     Api::SetCinematicMode(0, 0)
@@ -883,7 +883,7 @@ func fn_100a58f4  //
     goto L_100a5d34
   L_100a5a30:
     Api::SetObjective(0x32, 2, 1)   // obj: Proceed to the next room
-    Api::StartDialogue("specials2", this, 0, 0)   // dlg tutorial: X-Computer: Each X-man has at most 4 different special attacks that he or she can perform. ... results=0
+    Api::StartDialogue("specials2", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Script::GetPartyMemberId(0)
     Api::SetActionPromptId(ret_GetPartyMemberId, 0)
     Api::SetUIFlag27(0)
@@ -891,7 +891,7 @@ func fn_100a58f4  //
     goto L_100a5d34
   L_100a5aa4:
     Api::SetHudVisible(0)
-    Api::StartDialogue("specials3", this, 0, 0)   // dlg tutorial: X-Computer: Good job.  Proceed to the next room to learn more about special attacks. ... results=0
+    Api::StartDialogue("specials3", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::SetObjective(0x39, 2, 1)   // obj: Use Wolverine's special to kill the drone
     goto L_100a5d34
   L_100a5ae8:
@@ -900,7 +900,7 @@ func fn_100a58f4  //
   L_100a5b30:
     Api::AddToParty("cyclops")
     Api::WalkToTile("cyclops", 0x3f, 0x1d, -1)
-    Api::StartDialogue("specials5", this, 0, 0)   // dlg tutorial: X-Computer: Now, stand a few blocks away. The dummy has been programmed to attack if you get too close, so you ... results=0
+    Api::StartDialogue("specials5", this, 0, 0)   // dlg tutorial: X-Computer: … ... results=0
     Api::SetEnemy("brawler4")
     goto L_100a5d34
   L_100a5b90:
@@ -908,7 +908,7 @@ func fn_100a58f4  //
     if(ne) Api::SetHudVisible([(ne? api : ret_SetEnemy)] (ne? 0 : ?))
     Api::SetObjective(0x3a, 2, 1)   // obj: Use Cyclop's special to kill the dummy
   L_100a5be0:
-    Api::StartDialogue("specialsend", this, fn_100a5d50, 0)   // dlg tutorial: X-Computer: Excellent work, X-men. ... results=0
+    Api::StartDialogue("specialsend", this, fn_100a5d50, 0)   // dlg tutorial: X-Computer: … ... results=0
     goto L_100a5d34
   L_100a5bf8:
     Script::GetPartyMemberId(0)

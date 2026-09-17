@@ -101,7 +101,7 @@ func fn_100a3060  //
     goto L_100a3230
   L_100a31b0:
   L_100a31d8:
-    Api::StartDialogue("Xavier-2", this, fn_100a324c, 0)   // dlg mission24: Xavier: A new menace has arisen and we must act swiftly... ... results=0
+    Api::StartDialogue("Xavier-2", this, fn_100a324c, 0)   // dlg mission24: Xavier: … ... results=0
     goto L_100a3230
   L_100a31f0:
     Api::FadeOut(this, fn_100a323c)

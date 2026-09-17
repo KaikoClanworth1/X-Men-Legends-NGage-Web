@@ -90,7 +90,7 @@ func fn_100a259c  //
     goto L_100a272c
   L_100a2694:
   L_100a26bc:
-    Api::StartDialogue("Illyana-2", this, fn_100a2748, 0)   // dlg e16m21: Moira: This fungus seems to eliminate all signs of mutation from the cells it touches, with all of the signs o ... results=0
+    Api::StartDialogue("Illyana-2", this, fn_100a2748, 0)   // dlg e16m21: Moira: … ... results=0
     goto L_100a272c
   L_100a26d4:
     Api::FadeOut(this, fn_100a2738)

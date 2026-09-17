@@ -60,7 +60,7 @@ func fn_100a1e1c  // VTABLE OnStart
     return
 
 func fn_100a1e90  // 
-    Api::StartDialogue("InXJet", this, fn_100a1ee4, 0)   // dlg mission06: Xavier: X-Men, I apologize for the telepathic intrusion, but from data gained at the HAARP facility, I believe ... results=0
+    Api::StartDialogue("InXJet", this, fn_100a1ee4, 0)   // dlg mission06: Xavier: … ... results=0
     goto L_100a1ed8
   L_100a1ed8:
     return

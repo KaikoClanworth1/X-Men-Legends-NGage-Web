@@ -71,7 +71,7 @@ func fn_100a20e0  // VTABLE OnStart
 func fn_100a2158  // 
     Script::GetPartyMemberId(0)
     Api::SetDialogueSpeakerName(ret_GetPartyMemberId)
-    Api::StartDialogue("Illyana-1", this, fn_100a21c4, 0)   // dlg mission12: (Player): We found this in the old Weapon X facility. It was being used to analyze the DNA of mutants. ... results=0
+    Api::StartDialogue("Illyana-1", this, fn_100a21c4, 0)   // dlg mission12: (Player): … ... results=0
     goto L_100a21b8
   L_100a21b8:
     return
@@ -108,7 +108,7 @@ func fn_100a2244  // HANDLER for "moira"
     this.fc8 = 2
     Script::GetPartyMemberId(0)
     Api::SetDialogueSpeakerName(ret_GetPartyMemberId)
-    Api::StartDialogue("Illyana-2", this, fn_100a21c4, 0)   // dlg mission12: Moira: I will study any findings and see what I can do. ... results=0
+    Api::StartDialogue("Illyana-2", this, fn_100a21c4, 0)   // dlg mission12: Moira: … ... results=0
     goto L_100a2338
   L_100a2338:
     return

@@ -61,7 +61,7 @@ func fn_100a1c04  // VTABLE OnStart
     return
 
 func fn_100a1c78  // 
-    Api::StartDialogue("InXJet", this, fn_100a1ccc, 0)   // dlg mission01: Alison: Why is all of this happening to me? ... results=0
+    Api::StartDialogue("InXJet", this, fn_100a1ccc, 0)   // dlg mission01: Alison: … ... results=0
     goto L_100a1cc0
   L_100a1cc0:
     return
