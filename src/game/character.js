@@ -1,21 +1,25 @@
 import { ANIMS, ANIM } from '../formats/data.js';
 import { worldToScreen } from '../engine/level.js';
-import { moveWithCollision } from '../engine/collision.js';
+import { moveWithCollision, resolveMove } from '../engine/collision.js';
 import { maxHP, maxEnergy, rollMelee, meleeDamage, knockback, isDisabled, randInt, killXP, XP_TABLE } from './combat.js';
 
-export const TICK_MS = 45;          // game logic tick (emitters and animations run at 45 ms)
+export const TICK_MS = 40;          // fixed 40 ms game tick (CPeriodic, docs/specs/core.md)
 
-// Facing: 8 directions, 0 = +x world. Sprite sheets hold 5 direction rows; the other 3 are mirrored.
-// PROVISIONAL mapping until the core-loop RE spec confirms it (see docs/ROADMAP.md).
-export const DIR_TO_ROW = [0, 1, 2, 3, 4, 3, 2, 1];
-export const DIR_MIRROR = [false, false, false, false, false, true, true, true];
-const DIR_VECTORS = [...Array(8)].map((_, i) => [Math.cos(i * Math.PI / 4), Math.sin(i * Math.PI / 4)]);
-const dirTowards = (dx, dy) => {
-  let best = 0, bestDot = -2;
-  const len = Math.hypot(dx, dy) || 1;
-  DIR_VECTORS.forEach(([vx, vy], i) => { const d = (vx * dx + vy * dy) / len; if (d > bestDot) { bestDot = d; best = i; } });
-  return best;
-};
+// Facing is an angle, 1024 per turn, snapped to 8 directions (multiples of 0x80). Angle 0 = screen down-right.
+export const angleTowards = (dx, dy) => (Math.round(Math.atan2(-dy, dx) / (2 * Math.PI) * 8) * 0x80 + 1024) & 0x3ff;
+// Sprite row / mirror (VA 0x100b3904)
+export function rowForAngle(angle) {
+  const d = ((angle & 0x3ff) + 0x40) >> 7;
+  let row = 7 - d, mirror = false;
+  if (row > 4) { mirror = true; row = 8 - row; }
+  return [row, mirror];
+}
+// World step for an angle (VA 0x1000cd28): d = trunc(2s/3)
+export function stepForAngle(angle, s) {
+  const d = Math.trunc(2 * s / 3);
+  return [[s, 0], [d, -d], [0, -s], [-d, -d], [-s, 0], [-d, d], [0, s], [d, d]][((angle & 0x3ff) >> 7) & 7];
+}
+const dirTowards = (dx, dy) => angleTowards(dx, dy);
 
 // Character states (AI state table @VA 0x100f660c)
 export const S = { WALK: 1, RUN: 2, IDLE: 4, MELEE: 7, SPECIAL: 8, DAMAGE: 11, DIE: 13, DEAD: 99 };
@@ -24,7 +28,7 @@ export class Character {
   static async create(game, key, x, y) {
     const assets = game.assets, def = assets.characters.get(key.toLowerCase());
     const c = new Character();
-    Object.assign(c, { game, key, def, x, y, z: 0, facing: 1, anim: ANIM.i01, frame: 0, frameTimer: 0, animDone: false, radius: 30 });
+    Object.assign(c, { game, key, def, x, y, z: 0, facing: 0x380, anim: ANIM.i01, frame: 0, frameTimer: 0, animDone: false, radius: 30 });
     c.level = def ? Math.max(1, def.level) : 1;
     c.xp = def ? def.xp : 0;
     c.base = def ? def.stats.slice() : [3, 3, 3, 3];
@@ -54,7 +58,7 @@ export class Character {
   get alive() { return this.state !== S.DIE && this.state !== S.DEAD; }
   get reach() { return this.def ? this.def.reach : 130; }
   get sight() { return this.def ? this.def.sight : 500; }
-  get moveStep() { return (this.def ? this.def.moveSpeed : 10) * 3; }   // PROVISIONAL world units per tick (run = walk * 2 per spec)
+  get moveSpeed() { return this.def ? this.def.moveSpeed : 10; }
 
   play(id, once = false) {
     const sheetId = this.sheets[id] ? id : ANIM.i01;
@@ -71,7 +75,7 @@ export class Character {
     if (target) this.face(target);
     this.state = S.MELEE;
     // damage is resolved at the start of the swing, before the animation (VA 0x100042cc)
-    const [dx, dy] = DIR_VECTORS[this.facing];
+    const [dx, dy] = stepForAngle(this.facing, 1).map(v => Math.sign(v));
     const hit = target && this.distTo(target) <= this.reach + target.radius ? target
       : this.game.actors.find(a => a !== this && a.alive && this.isEnemyOf(a) && Math.hypot(a.x - (this.x + dx * this.reach / 2), a.y - (this.y + dy * this.reach / 2)) <= this.reach);
     if (hit) this.resolveMelee(hit);
@@ -136,13 +140,22 @@ export class Character {
     else this.play(ANIM.i01);
     this.advanceAnim();
   }
+  // Turn toward the desired angle by 0x80 per tick; move when within 0x80 (VA 0x100083a4 / 0x10002f14). Run = 2x walk step.
+  moveToward(level, desired, run = true) {
+    const diff = (desired - this.facing + 1024) & 0x3ff;
+    if (diff) this.facing = (this.facing + (diff <= 0x200 ? 0x80 : -0x80) + 1024) & 0x3ff;
+    const animId = run && this.sheets[ANIM.r01] ? ANIM.r01 : this.sheets[ANIM.w01] ? ANIM.w01 : ANIM.i01;
+    if (diff > 0x80 && diff < 1024 - 0x80) { this.play(animId); return; }
+    const wasAnim = this.anim;
+    this.play(animId);
+    if (wasAnim !== animId || animId === ANIM.i01) return;       // move only once the animation already matches
+    let [dx, dy] = stepForAngle(this.facing, this.moveSpeed);
+    if (animId === ANIM.r01) { dx *= 2; dy *= 2; }
+    [this.x, this.y] = resolveMove(level.map, this.x, this.y, dx, dy, this === this.game.player ? 2 : 2);
+  }
   walk(level, vx, vy, run = true) {
-    const len = Math.hypot(vx, vy);
-    if (!len) return;
-    this.facing = dirTowards(vx, vy);
-    const step = this.moveStep * (run ? 2 : 1) / 2;
-    [this.x, this.y] = moveWithCollision(level.map, this.x, this.y, vx / len * step, vy / len * step, this.radius);
-    this.play(run && this.sheets[ANIM.r01] ? ANIM.r01 : this.sheets[ANIM.w01] ? ANIM.w01 : ANIM.r01);
+    if (!vx && !vy) return;
+    this.moveToward(level, angleTowards(vx, vy), run);
   }
   updatePlayer(level, move) {
     const input = this.game.input;
@@ -152,7 +165,7 @@ export class Character {
       this.startMelee(target);
       return;
     }
-    if (move) this.walk(level, move[0], move[1]);
+    if (move !== null) { this.state = S.RUN; this.moveToward(level, move, true); }
     else { this.state = S.IDLE; this.play(ANIM.i01); }
   }
   // Enemy AI (docs/specs/combat.md §5): scan every 9 ticks within sight, chase, melee with cooldown 2000-4550 ms
@@ -201,7 +214,7 @@ export class Character {
     if (this.state === S.DEAD) return;
     const sheet = this.sheets[this.anim] || this.sheets[ANIM.i01];
     if (!sheet) return;
-    const row = DIR_TO_ROW[this.facing], mirror = DIR_MIRROR[this.facing];
+    const [row, mirror] = rowForAngle(this.facing);
     const f = sheet.frames[row * sheet.perRow + Math.min(this.frame, sheet.perRow - 1)];
     if (!f) return;
     const [sx, sy] = worldToScreen(this.x, this.y, this.z);
